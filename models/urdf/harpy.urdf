@@ -20,6 +20,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/TorsoPelvis.OBJ"/>
+            </geometry>
+        </collision>
     </link>
 
     <!-- Thrusters -->
@@ -35,6 +40,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Thruster.OBJ"/>
+            </geometry>
+        </collision>
     </link>
     <link name="ThrusterLeft">
         <inertial>
@@ -48,6 +58,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Thruster.OBJ"/>
+            </geometry>
+        </collision>
     </link>
 
     <!-- Hips -->
@@ -63,6 +78,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Hip.OBJ"/>
+            </geometry>
+        </collision>
     </link>
     <link name="HipLeft">
         <inertial>
@@ -76,6 +96,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Hip.OBJ"/>
+            </geometry>
+        </collision>
     </link>
     
     <!-- Femur (I am Quadzilla) -->
@@ -91,6 +116,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Femur.OBJ"/>
+            </geometry>
+        </collision>
     </link>
     <link name="FemurLeft">
         <inertial>
@@ -104,6 +134,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Femur.OBJ"/>
+            </geometry>
+        </collision>
     </link>
 
     <!-- Tibia -->
@@ -119,6 +154,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Tibia.OBJ"/>
+            </geometry>
+        </collision>
     </link>
     <link name="TibiaLeft">
        <inertial>
@@ -132,6 +172,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Tibia.OBJ"/>
+            </geometry>
+        </collision>
     </link>
 
     <!-- Feet -->
@@ -147,6 +192,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Foot.OBJ"/>
+            </geometry>
+        </collision>
     </link>
     <link name="FootLeft">
         <inertial>
@@ -160,6 +210,11 @@
             </geometry>
             <material name="black"/>
         </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Foot.OBJ"/>
+            </geometry>
+        </collision>
     </link>
 
     <!-- *************************** JOINTS *************************** -->
@@ -232,5 +287,5 @@
         <axis xyz="0 1 0"/>
         <origin xyz="-0.20512 0.0 -0.24561" rpy="0.0 0.0 0.0"/>
     </joint>
-
+    
 </robot>
