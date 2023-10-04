@@ -15,7 +15,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/TorsoPelvis.OBJ"/>
+                <mesh filename="../meshes/TorsoPelvis.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -28,7 +28,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Thruster.OBJ"/>
+                <mesh filename="../meshes/Thruster.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -39,7 +39,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Thruster.OBJ"/>
+                <mesh filename="../meshes/Thruster.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -52,7 +52,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Hip.OBJ"/>
+                <mesh filename="../meshes/Hip.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -63,7 +63,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Hip.OBJ"/>
+                <mesh filename="../meshes/Hip.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -76,7 +76,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Femur.OBJ"/>
+                <mesh filename="../meshes/Femur.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -87,7 +87,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Femur.OBJ"/>
+                <mesh filename="../meshes/Femur.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -101,7 +101,7 @@
         <visual>
             <geometry>
                 
-                <mesh filename="./meshes/Tibia.OBJ"/>
+                <mesh filename="../meshes/Tibia.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -112,7 +112,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Tibia.OBJ"/>
+                <mesh filename="../meshes/Tibia.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -126,7 +126,7 @@
         <visual>
             <geometry>
                 
-                <mesh filename="./meshes/Foot.OBJ"/>
+                <mesh filename="../meshes/Foot.OBJ"/>
             </geometry>
         </visual>
     </link>
@@ -137,7 +137,7 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="./meshes/Foot.OBJ"/>
+                <mesh filename="../meshes/Foot.OBJ"/>
             </geometry>
         </visual>
     </link>
