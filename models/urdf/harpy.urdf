@@ -196,6 +196,11 @@
             <geometry>
                 <mesh filename="../meshes/Foot.OBJ"/>
             </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:mu_dynamic value="0.5"/>
+                <drake:hunt_crossley_dissipation value="1.25"/>
+            </drake:proximity_properties>
         </collision>
     </link>
     <link name="FootLeft">
@@ -214,6 +219,11 @@
             <geometry>
                 <mesh filename="../meshes/Foot.OBJ"/>
             </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:mu_dynamic value="0.5"/>
+                <drake:hunt_crossley_dissipation value="1.25"/>
+            </drake:proximity_properties>
         </collision>
     </link>
 

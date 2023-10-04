@@ -11,13 +11,14 @@ from pydrake.all import *
 
 # Simulation parameters
 sim_time = 4.0  # seconds
-realtime_rate = 1
+realtime_rate = -1
 
 model_file = "./models/urdf/harpy.urdf"
 
 config = MultibodyPlantConfig()
-config.time_step = 5e-3
+config.time_step = 1e-2
 config.discrete_contact_solver = "sap"
+config.contact_model = "hydroelastic_with_fallback"
 
 # Start meshcat
 meshcat = StartMeshcat()
@@ -31,12 +32,21 @@ Parser(plant).AddModels(model_file)
 # TODO: add distance constraints
 
 # Add a flat ground with friction
+ground_props = ProximityProperties()
+AddContactMaterial(
+        friction=CoulombFriction(static_friction=0.5, dynamic_friction=0.5),
+        dissipation=1.25,
+        properties=ground_props)
+AddCompliantHydroelasticPropertiesForHalfSpace(
+        slab_thickness=1.0,
+        hydroelastic_modulus=1e7,
+        properties=ground_props)
 plant.RegisterCollisionGeometry(
         plant.world_body(),
         RigidTransform(),
         HalfSpace(),
         "ground_collision",
-        CoulombFriction(static_friction=1.0, dynamic_friction=1.0))
+        ground_props)
 
 # Turn off gravity
 #plant.mutable_gravity_field().set_gravity_vector([0, 0, 0])
