@@ -2,6 +2,9 @@
 
 <!-- units are in SI -->
 <robot name="harpy">
+    <material name="black">
+        <color rgba="0.2 0.2 0.2 1"/>
+    </material>
 
     <!-- *************************** LINKS *************************** -->
     <!-- Torso -->
@@ -14,6 +17,7 @@
             <geometry>
                 <mesh filename="../meshes/TorsoPelvis.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
 
@@ -27,6 +31,7 @@
             <geometry>
                 <mesh filename="../meshes/Thruster.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
     <link name="ThrusterLeft">
@@ -38,6 +43,7 @@
             <geometry>
                 <mesh filename="../meshes/Thruster.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
 
@@ -51,6 +57,7 @@
             <geometry>
                 <mesh filename="../meshes/Hip.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
     <link name="HipLeft">
@@ -62,6 +69,7 @@
             <geometry>
                 <mesh filename="../meshes/Hip.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
     
@@ -75,6 +83,7 @@
             <geometry>
                 <mesh filename="../meshes/Femur.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
     <link name="FemurLeft">
@@ -86,6 +95,7 @@
             <geometry>
                 <mesh filename="../meshes/Femur.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
 
@@ -97,9 +107,9 @@
         </inertial>
         <visual>
             <geometry>
-                
                 <mesh filename="../meshes/Tibia.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
     <link name="TibiaLeft">
@@ -111,6 +121,7 @@
             <geometry>
                 <mesh filename="../meshes/Tibia.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
 
@@ -122,9 +133,9 @@
         </inertial>
         <visual>
             <geometry>
-                
                 <mesh filename="../meshes/Foot.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
     <link name="FootLeft">
@@ -136,6 +147,7 @@
             <geometry>
                 <mesh filename="../meshes/Foot.OBJ"/>
             </geometry>
+            <material name="black"/>
         </visual>
     </link>
 
