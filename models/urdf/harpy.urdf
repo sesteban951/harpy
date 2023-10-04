@@ -4,9 +4,6 @@
 <robot name="harpy">
 
     <!-- *************************** LINKS *************************** -->
-    <!-- Base Link-->
-    <link name="World"> </link>
-    
     <!-- Torso -->
     <link name="Torso">
         <inertial>
@@ -143,13 +140,6 @@
     </link>
 
     <!-- *************************** JOINTS *************************** -->
-    <!-- Torso to Base -->
-    <joint name="Torso_Base" type="floating">
-        <parent link="World"/>
-        <child link="Torso"/>
-        <origin xyz="0.0 0.0 0.5" rpy="0.0 0.0 0.0"/>
-    </joint>
-
     <!-- Thrusters to Torso -->
     <joint name="Torso_ThrusterRight" type="continuous">
         <parent link="Torso"/>
