@@ -1,0 +1,223 @@
+<?xml version="1.0"?>
+
+<!-- units are in SI -->
+<robot name="harpy">
+
+    <!-- *************************** LINKS *************************** -->
+    <!-- Base Link-->
+    <link name="World"> </link>
+    
+    <!-- Torso -->
+    <link name="Torso">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/TorsoPelvis.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- Thrusters -->
+    <link name="ThrusterRight">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Thruster.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+    <link name="ThrusterLeft">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Thruster.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- Hips -->
+    <link name="HipRight">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Hip.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+    <link name="HipLeft">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Hip.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+    
+    <!-- Femur (I am Quadzilla) -->
+    <link name="FemurRight">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Femur.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+    <link name="FemurLeft">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Femur.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- Tibia -->
+    <link name="TibiaRight">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                
+                <mesh filename="./meshes/Tibia.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+    <link name="TibiaLeft">
+       <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Tibia.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- Feet -->
+    <link name="FootRight">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                
+                <mesh filename="./meshes/Foot.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+    <link name="FootLeft">
+        <inertial>
+            <mass value="1.0"/>
+            <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="./meshes/Foot.OBJ"/>
+            </geometry>
+        </visual>
+    </link>
+
+    <!-- *************************** JOINTS *************************** -->
+    <!-- Torso to Base -->
+    <joint name="Torso_Base" type="floating">
+        <parent link="World"/>
+        <child link="Torso"/>
+        <origin xyz="0.0 0.0 0.5" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Thrusters to Torso -->
+    <joint name="Torso_ThrusterRight" type="continuous">
+        <parent link="Torso"/>
+        <child link="ThrusterRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="-0.028 -0.2 0.16" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="Torso_ThrusterLeft" type="continuous">
+        <parent link="Torso"/>
+        <child link="ThrusterLeft"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="-0.028 0.2 0.16" rpy="0.0 0.0 3.1416"/>
+    </joint>
+
+    <!-- Hips to Torso -->
+    <joint name="Torso_HipRight" type="continuous">
+        <parent link="Torso"/>
+        <child link="HipRight"/>
+        <axis xyz="1 0 0"/>
+        <origin xyz="0.0 -0.1 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="Torso_HipLeft" type="continuous">
+        <parent link="Torso"/>
+        <child link="HipLeft"/>
+        <axis xyz="1 0 0"/>
+        <origin xyz="0.0 0.1 0.0" rpy="3.1416 0.0 0.0"/>
+    </joint>
+
+    <!-- Femur to Hips -->
+    <joint name="HipRight_FemurRight" type="continuous">
+        <parent link="HipRight"/>
+        <child link="FemurRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.06549 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="HipLeft_FemurLeft" type="continuous">
+        <parent link="HipLeft"/>
+        <child link="FemurLeft"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.06549 0.0 0.0" rpy="-3.14159 0.0 0.0"/>
+    </joint>
+
+    <!-- Tibia to Femur -->
+    <joint name="FemurRight_TibiaRight" type="continuous">
+        <parent link="FemurRight"/>
+        <child link="TibiaRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.07513 0.035 -0.13013" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="FemurLeft_TibiaLeft" type="continuous">
+        <parent link="FemurLeft"/>
+        <child link="TibiaLeft"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.07513 -0.035 -0.13013" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Feet to Tibia -->
+    <joint name="TibiaRight_FootRight" type="continuous">
+        <parent link="TibiaRight"/>
+        <child link="FootRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="-0.20512 0.0 -0.24561" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="TibiaLeft_FootLeft" type="continuous">
+        <parent link="TibiaLeft"/>
+        <child link="FootLeft"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="-0.20512 0.0 -0.24561" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+</robot>
