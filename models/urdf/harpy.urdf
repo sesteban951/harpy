@@ -227,6 +227,39 @@
         </collision>
     </link>
 
+    <link name="FootLeftBall">
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Ball.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+    <link name="FootRightBall">
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Ball.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+    <link name="TibiaLeftBall">
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Ball.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+    <link name="TibiaRightBall">
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Ball.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+
     <!-- *************************** JOINTS *************************** -->
     <!-- Thrusters to Torso -->
     <joint name="Torso_ThrusterRight" type="continuous">
@@ -296,6 +329,27 @@
         <child link="FootLeft"/>
         <axis xyz="0 1 0"/>
         <origin xyz="-0.20512 0.0 -0.24561" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <joint name="FootLeft_Ball" type="fixed">
+        <parent link="FootLeft"/>
+        <child link="FootLeftBall"/>
+        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
+    </joint>
+    <joint name="FootRight_Ball" type="fixed">
+        <parent link="FootRight"/>
+        <child link="FootRightBall"/>
+        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
+    </joint>
+    <joint name="TibiaLeft_Ball" type="fixed">
+        <parent link="TibiaLeft"/>
+        <child link="TibiaLeftBall"/>
+        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
+    </joint>
+    <joint name="TibiaRight_Ball" type="fixed">
+        <parent link="TibiaRight"/>
+        <child link="TibiaRightBall"/>
+        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
     </joint>
     
 </robot>

@@ -29,10 +29,9 @@ plant, scene_graph = AddMultibodyPlant(config, builder)
 
 # Create the harpy model
 Parser(plant).AddModels(model_file)
-body_A = plant.GetBodyByName("FootLeft")
-p_AQ = np.array([-0.3, 0, 0.052])
-body_B = plant.GetBodyByName("FemurLeft")
-distance = 0.32
+body_A = plant.GetBodyByName("FootLeftBall")
+body_B = plant.GetBodyByName("TibiaLeftBall")
+# TODO: add distance constraint
 
 # Add a flat ground with friction
 ground_props = ProximityProperties()
@@ -53,8 +52,10 @@ plant.RegisterCollisionGeometry(
 
 # Turn off gravity
 #plant.mutable_gravity_field().set_gravity_vector([0, 0, 0])
-
 plant.Finalize()
+
+# TODO: add simple PD controller
+
 AddDefaultVisualization(builder, meshcat)
 diagram = builder.Build()
 diagram_context = diagram.CreateDefaultContext()
@@ -67,17 +68,6 @@ q0 = np.array([1, 0, 0, 0,   # base orientation
                0, 0, 0, 0,   # right leg
                0, 0, 0, 0])  # left leg
 plant.SetPositions(plant_context, q0)
-
-# DEBUG: compute distance between frames
-frame1 = plant.GetFrameByName("FootLeft")
-frame2 = plant.GetFrameByName("FemurLeft")
-p1 = frame1.CalcPoseInWorld(plant_context).translation()
-p2 = frame2.CalcPoseInWorld(plant_context).translation()
-print(p1)
-print(p2)
-print(np.linalg.norm(p1-p2))
-
-sys.exit()
 
 # Run the sim
 simulator = Simulator(diagram, diagram_context)
