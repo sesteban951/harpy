@@ -8,6 +8,7 @@
 
 import numpy as np
 from pydrake.all import *
+from controller import TemplateController
 
 # Simulation parameters
 sim_time = 4.0  # seconds
@@ -27,19 +28,6 @@ meshcat = StartMeshcat()
 builder = DiagramBuilder()
 plant, scene_graph = AddMultibodyPlant(config, builder)
 
-# Create the harpy model
-harpy = Parser(plant).AddModels(model_file)[0]
-body_A = plant.GetBodyByName("FootLeftBall")
-body_B = plant.GetBodyByName("TibiaLeftBall")
-plant.AddDistanceConstraint(
-    plant.GetBodyByName("FootLeftBall"), [0, 0, 0],
-    plant.GetBodyByName("TibiaLeftBall"), [0, 0, 0],
-    0.32)
-plant.AddDistanceConstraint(
-    plant.GetBodyByName("FootRightBall"), [0, 0, 0],
-    plant.GetBodyByName("TibiaRightBall"), [0, 0, 0],
-    0.32)
-
 # Add a flat ground with friction
 ground_props = ProximityProperties()
 AddContactMaterial(
@@ -57,37 +45,48 @@ plant.RegisterCollisionGeometry(
         "ground_collision",
         ground_props)
 
-# Turn off gravity
-#plant.mutable_gravity_field().set_gravity_vector([0, 0, 0])
+# Add the harpy model
+harpy = Parser(plant).AddModels(model_file)[0]
+body_A = plant.GetBodyByName("FootLeftBall")
+body_B = plant.GetBodyByName("TibiaLeftBall")
+plant.AddDistanceConstraint(
+    plant.GetBodyByName("FootLeftBall"), [0, 0, 0],
+    plant.GetBodyByName("TibiaLeftBall"), [0, 0, 0],
+    0.32)
+plant.AddDistanceConstraint(
+    plant.GetBodyByName("FootRightBall"), [0, 0, 0],
+    plant.GetBodyByName("TibiaRightBall"), [0, 0, 0],
+    0.32)
 
-# Implicit PD
+# Set up control strategy. The user-designed controller supplies nominal joint
+# angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
+# for each of the actuated joints. Torques to be applied on the robot are then
+# computed as 
+#
+#   tau = tau_ff + Kp * (q - q_nom) + Kd * (v - v_nom)
+#
+# This is a rough imitation of a low-level motor control strategy that might
+# run on the hardware.
 Kp = 50 * np.ones(plant.num_actuators())
 Kd = 5 * np.ones(plant.num_actuators())
-
-actuator_indices = []
-for i in range(plant.num_actuators()):
-    actuator_index = JointActuatorIndex(i)
-    actuator_indices.append(actuator_index)
-
+actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
     plant.get_joint_actuator(actuator_index).set_controller_gains(
         PdControllerGains(p=Kp, d=Kd)
     )
-
 plant.Finalize()
 
-# TODO: add simple PD controller
+# Add the controller
 controller = builder.AddSystem(
-        ConstantVectorSource(np.zeros(plant.num_actuators())))
+        TemplateController())
 builder.Connect(
-        controller.get_output_port(),
+        plant.get_state_output_port(),
+        controller.GetInputPort("x_hat"))
+builder.Connect(
+        controller.GetOutputPort("tau_ff"),
         plant.get_actuation_input_port())
-
-# Desired state sender
-desired_state_sender = builder.AddSystem(
-        ConstantVectorSource(np.zeros(16)))
 builder.Connect(
-        desired_state_sender.get_output_port(),
+        controller.GetOutputPort("x_nom"),
         plant.get_desired_state_input_port(harpy))
 
 AddDefaultVisualization(builder, meshcat)
@@ -112,4 +111,3 @@ meshcat.StartRecording()
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
 
-print("done")
