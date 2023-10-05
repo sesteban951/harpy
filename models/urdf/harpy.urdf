@@ -274,7 +274,7 @@
         <axis xyz="0 1 0"/>
         <origin xyz="-0.028 0.2 0.16" rpy="0.0 0.0 3.1416"/>
     </joint>
-
+    
     <!-- Hips to Torso -->
     <joint name="Torso_HipRight" type="continuous">
         <parent link="Torso"/>
@@ -351,5 +351,50 @@
         <child link="TibiaRightBall"/>
         <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
     </joint>
+    
+    <!-- *************************** ACTUATORS *************************** -->
+    <transmission name="Torso_ThrusterRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="Torso_ThrusterRight"/>
+        <actuator name="Torso_ThrusterRight"/>
+    </transmission>
+    <transmission name="Torso_ThrusterLeft">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="Torso_ThrusterLeft"/>
+        <actuator name="Torso_ThrusterLeft"/>
+    </transmission>
+    
+    <transmission name="Torso_HipRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="Torso_HipRight"/>
+        <actuator name="Torso_HipRight"/>
+    </transmission>
+    <transmission name="Torso_HipLeft">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="Torso_HipLeft"/>
+        <actuator name="Torso_HipLeft"/>
+    </transmission>
+
+    <transmission name="HipRight_FemurRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="HipRight_FemurRight"/>
+        <actuator name="HipRight_FemurRight"/>
+    </transmission>
+    <transmission name="HipLeft_FemurLeft">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="HipLeft_FemurLeft"/>
+        <actuator name="HipLeft_FemurLeft"/>
+    </transmission>
+    
+    <transmission name="FemurRight_TibiaRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="FemurRight_TibiaRight"/>
+        <actuator name="FemurRight_TibiaRight"/>
+    </transmission>
+    <transmission name="FemurLeft_TibiaLeft">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="FemurLeft_TibiaLeft"/>
+        <actuator name="FemurLeft_TibiaLeft"/>
+    </transmission>
     
 </robot>
