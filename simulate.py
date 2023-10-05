@@ -11,8 +11,8 @@ from pydrake.all import *
 from controller import TemplateController
 
 # Simulation parameters
-sim_time = 4.0  # seconds
-realtime_rate = -1
+sim_time = 5.0  # seconds
+realtime_rate = 1
 
 model_file = "./models/urdf/harpy.urdf"
 
@@ -47,15 +47,13 @@ plant.RegisterCollisionGeometry(
 
 # Add the harpy model
 harpy = Parser(plant).AddModels(model_file)[0]
-body_A = plant.GetBodyByName("FootLeftBall")
-body_B = plant.GetBodyByName("TibiaLeftBall")
 plant.AddDistanceConstraint(
-    plant.GetBodyByName("FootLeftBall"), [0, 0, 0],
-    plant.GetBodyByName("TibiaLeftBall"), [0, 0, 0],
+    plant.GetBodyByName("BallFootLeft"), [0, 0, 0],
+    plant.GetBodyByName("BallFemurLeft"), [0, 0, 0],
     0.32)
 plant.AddDistanceConstraint(
-    plant.GetBodyByName("FootRightBall"), [0, 0, 0],
-    plant.GetBodyByName("TibiaRightBall"), [0, 0, 0],
+    plant.GetBodyByName("BallFootRight"), [0, 0, 0],
+    plant.GetBodyByName("BallFemurRight"), [0, 0, 0],
     0.32)
 
 # Set up control strategy. The user-designed controller supplies nominal joint
