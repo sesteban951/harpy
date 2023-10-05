@@ -2,6 +2,8 @@
 
 <!-- units are in SI -->
 <robot name="harpy">
+
+    <!-- *************************** MATERIALS *************************** -->
     <material name="black">
         <color rgba="0.2 0.2 0.2 1"/>
     </material>
@@ -112,13 +114,13 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="../meshes/Femur.OBJ"/>
+                <mesh filename="../meshes/FemurRight.OBJ"/>
             </geometry>
             <material name="black"/>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="../meshes/Femur.OBJ"/>
+                <mesh filename="../meshes/FemurRight.OBJ"/>
             </geometry>
         </collision>
     </link>
@@ -130,13 +132,13 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="../meshes/Femur.OBJ"/>
+                <mesh filename="../meshes/FemurLeft.OBJ"/>
             </geometry>
             <material name="black"/>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="../meshes/Femur.OBJ"/>
+                <mesh filename="../meshes/FemurLeft.OBJ"/>
             </geometry>
         </collision>
     </link>
@@ -227,7 +229,8 @@
         </collision>
     </link>
 
-    <link name="FootLeftBall">
+    <!-- Ball -->
+    <link name="BallFootRight">
         <visual>
             <geometry>
                 <mesh filename="../meshes/Ball.OBJ"/>
@@ -235,7 +238,7 @@
             <material name="black"/>
         </visual>
     </link>
-    <link name="FootRightBall">
+    <link name="BallFootLeft">
         <visual>
             <geometry>
                 <mesh filename="../meshes/Ball.OBJ"/>
@@ -243,7 +246,7 @@
             <material name="black"/>
         </visual>
     </link>
-    <link name="TibiaLeftBall">
+    <link name="BallFemurRight">
         <visual>
             <geometry>
                 <mesh filename="../meshes/Ball.OBJ"/>
@@ -251,7 +254,7 @@
             <material name="black"/>
         </visual>
     </link>
-    <link name="TibiaRightBall">
+    <link name="BallFemurLeft">
         <visual>
             <geometry>
                 <mesh filename="../meshes/Ball.OBJ"/>
@@ -331,25 +334,28 @@
         <origin xyz="-0.20512 0.0 -0.24561" rpy="0.0 0.0 0.0"/>
     </joint>
 
-    <joint name="FootLeft_Ball" type="fixed">
-        <parent link="FootLeft"/>
-        <child link="FootLeftBall"/>
-        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
+    <!-- Ball to Femur-->
+    <joint name="FemurRight_BallFemurRight" type="fixed">
+        <parent link="FemurRight"/>
+        <child link="BallFemurRight"/>
+        <origin xyz="0.04513 0.035 -0.07817" rpy="0.0 0.0 0.0"/>
     </joint>
-    <joint name="FootRight_Ball" type="fixed">
+    <joint name="FemurLeft_BallFemurLeft" type="fixed">
+        <parent link="FemurLeft"/>
+        <child link="BallFemurLeft"/>
+        <origin xyz="0.04513 -0.035 -0.07817" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Ball to Feet -->
+    <joint name="FootRight_BallFootRight" type="fixed">
         <parent link="FootRight"/>
-        <child link="FootRightBall"/>
-        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
+        <child link="BallFootRight"/>
+        <origin xyz="-0.03 0.0 0.05196" rpy="0.0 0.0 0.0"/>
     </joint>
-    <joint name="TibiaLeft_Ball" type="fixed">
-        <parent link="TibiaLeft"/>
-        <child link="TibiaLeftBall"/>
-        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
-    </joint>
-    <joint name="TibiaRight_Ball" type="fixed">
-        <parent link="TibiaRight"/>
-        <child link="TibiaRightBall"/>
-        <origin xyz="-0.03 0 0.05196" rpy="0 0 0"/>
+    <joint name="FootLeft_BallFootLeft" type="fixed">
+        <parent link="FootLeft"/>
+        <child link="BallFootLeft"/>
+        <origin xyz="-0.03 0.0 0.05196" rpy="0.0 0.0 0.0"/>
     </joint>
     
     <!-- *************************** ACTUATORS *************************** -->
