@@ -74,6 +74,41 @@ for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
     )
 plant.Finalize()
 
+# Add thrusters
+left_thruster = builder.AddSystem(
+        Propeller(plant.GetBodyByName("ThrusterLeft").index()))
+right_thruster = builder.AddSystem(
+        Propeller(plant.GetBodyByName("ThrusterRight").index()))
+
+spatial_force_multiplexer = builder.AddSystem(  # combines forces of both props
+        ExternallyAppliedSpatialForceMultiplexer(2))
+
+builder.Connect(
+        plant.get_body_poses_output_port(),
+        left_thruster.get_body_poses_input_port())
+builder.Connect(
+        plant.get_body_poses_output_port(),
+        right_thruster.get_body_poses_input_port())
+
+builder.Connect(
+        left_thruster.get_spatial_forces_output_port(),
+        spatial_force_multiplexer.get_input_port(0))
+builder.Connect(
+        right_thruster.get_spatial_forces_output_port(),
+        spatial_force_multiplexer.get_input_port(1))
+builder.Connect(
+        spatial_force_multiplexer.get_output_port(),
+        plant.get_applied_spatial_force_input_port())
+
+thruster_control = builder.AddSystem(
+        ConstantVectorSource(np.array([100])))
+builder.Connect(
+        thruster_control.get_output_port(),
+        left_thruster.get_command_input_port())
+builder.Connect(
+        thruster_control.get_output_port(),
+        right_thruster.get_command_input_port())
+
 # Add the controller
 controller = builder.AddSystem(
         TemplateController())
@@ -91,6 +126,12 @@ AddDefaultVisualization(builder, meshcat)
 diagram = builder.Build()
 diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
+
+# DEBUG: visualize diagram
+import matplotlib.pyplot as plt
+plt.figure()
+plot_system_graphviz(diagram, max_depth=1)
+plt.show()
 
 # Set the initial condition
 q0 = np.array([1, 0, 0, 0,   # base orientation
