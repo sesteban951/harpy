@@ -100,13 +100,13 @@ builder.Connect(
         spatial_force_multiplexer.get_output_port(),
         plant.get_applied_spatial_force_input_port())
 
-thruster_control = builder.AddSystem(
-        ConstantVectorSource(np.array([100])))
+thruster_demux = builder.AddSystem(
+    Demultiplexer(2, 1))
 builder.Connect(
-        thruster_control.get_output_port(),
+        thruster_demux.get_output_port(0),
         left_thruster.get_command_input_port())
 builder.Connect(
-        thruster_control.get_output_port(),
+        thruster_demux.get_output_port(1),
         right_thruster.get_command_input_port())
 
 # Add the controller
@@ -121,17 +121,14 @@ builder.Connect(
 builder.Connect(
         controller.GetOutputPort("x_nom"),
         plant.get_desired_state_input_port(harpy))
+builder.Connect(
+        controller.GetOutputPort("thrust"),
+        thruster_demux.get_input_port())
 
 AddDefaultVisualization(builder, meshcat)
 diagram = builder.Build()
 diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
-
-# DEBUG: visualize diagram
-import matplotlib.pyplot as plt
-plt.figure()
-plot_system_graphviz(diagram, max_depth=1)
-plt.show()
 
 # Set the initial condition
 q0 = np.array([1, 0, 0, 0,   # base orientation
@@ -141,11 +138,12 @@ q0 = np.array([1, 0, 0, 0,   # base orientation
                0, 0, 0, 0])  # left leg
 plant.SetPositions(plant_context, q0)
 
-# Run the sim
+# Initialize the sim
 simulator = Simulator(diagram, diagram_context)
-simulator.Initialize()
 simulator.set_target_realtime_rate(realtime_rate)
+simulator.Initialize()
 
+# Run the sim
 meshcat.StartRecording()
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
