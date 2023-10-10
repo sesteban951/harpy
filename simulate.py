@@ -48,11 +48,11 @@ plant.RegisterCollisionGeometry(
 # Add the harpy model
 harpy = Parser(plant).AddModels(model_file)[0]
 plant.AddDistanceConstraint(
-    plant.GetBodyByName("BallFootLeft"), [0, 0, 0],
+    plant.GetBodyByName("BallTarsusLeft"), [0, 0, 0],
     plant.GetBodyByName("BallFemurLeft"), [0, 0, 0],
     0.32)
 plant.AddDistanceConstraint(
-    plant.GetBodyByName("BallFootRight"), [0, 0, 0],
+    plant.GetBodyByName("BallTarsusRight"), [0, 0, 0],
     plant.GetBodyByName("BallFemurRight"), [0, 0, 0],
     0.32)
 
@@ -93,11 +93,11 @@ diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
 # Set the initial condition
-q0 = np.array([1, 0, 0, 0,   # base orientation
-               0, 0, 0.49,   # base position
-               0, 0,         # thrusters
-               0, 0, 0, 0,   # right leg
-               0, 0, 0, 0])  # left leg
+q0 = np.array([1, 0, 0, 0,      # base orientation
+               0, 0, 0.49,      # base position
+               0, 0,            # thrusters
+               0, 0, 0, 0, 0,   # right leg
+               0, 0, 0, 0, 0])  # left leg
 plant.SetPositions(plant_context, q0)
 
 # Run the sim
