@@ -4,14 +4,17 @@ class TemplateController(LeafSystem):
     """
     A simple example of a Drake control system for the Harpy robot. 
 
-    It takes state estimates x_hat as input, and outputs target joint angles
-    q_nom, target joint velocities v_nom, and feed-forward torques tau_ff
+    It takes state estimates `x_hat` as input, and outputs target joint angles
+    `q_nom`, target joint velocities `v_nom`, feed-forward joint torques `tau_ff`, 
+    and thruster forces `thrust`.
 
                        ----------------
                        |              |
                        |              | ---> x_nom = [q_nom, v_nom]
-            x_hat ---> |  Controller  |
-                       |              | ---> tau_ff
+                       |              |
+            x_hat ---> |  Controller  | ---> tau_ff
+                       |              |
+                       |              | ---> thrust
                        |              |
                        ----------------
 
@@ -54,6 +57,13 @@ class TemplateController(LeafSystem):
                     self._cache.Eval(context)["x_nom"]),
                 prerequisites_of_calc={self._cache.ticket()})
 
+        self.DeclareVectorOutputPort(
+                "thrust",
+                BasicVector(2),
+                lambda context, output: output.set_value(
+                    self._cache.Eval(context)["thrust"]),
+                prerequisites_of_calc={self._cache.ticket()})
+
     def CalcOutput(self, context):
         """
         This is where the magic happens. Compute tau_ff, q_nom, and q_nom based
@@ -67,7 +77,10 @@ class TemplateController(LeafSystem):
 
         # Amazing walking controller goes here!
 
+        # Feed-forward joint torques
         tau_ff = np.zeros(8)
+
+        # Target joint angles and velocities
         q_nom = np.array([
             0, 0,   # thrusters
             0, 0,   # hip ad/ab
@@ -76,5 +89,8 @@ class TemplateController(LeafSystem):
         v_nom = np.zeros(8)
         x_nom = np.block([q_nom, v_nom])
 
-        return {"tau_ff": tau_ff, "x_nom": x_nom}
+        # Forces applied by the thrusters
+        thrust = np.array([0, 0])   # left, right
+
+        return {"tau_ff": tau_ff, "x_nom": x_nom, "thrust": thrust}
 
