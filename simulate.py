@@ -131,9 +131,9 @@ diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
 # Set the initial condition
-q0 = np.array([1, 0, 0, 0,      # base orientation
-               0, 0, 0.49,      # base position
-               0, 0,            # thrusters
+q0 = np.array([1, 0, 0, 0,         # base orientation
+               0, 0, 0.49,         # base position
+               0, 0,               # thrusters
                0, 0, 0, 0, 0,   # right leg
                0, 0, 0, 0, 0])  # left leg
 plant.SetPositions(plant_context, q0)
@@ -142,6 +142,8 @@ plant.SetPositions(plant_context, q0)
 simulator = Simulator(diagram, diagram_context)
 simulator.set_target_realtime_rate(realtime_rate)
 simulator.Initialize()
+
+input("Press ENTER to continue")
 
 # Run the sim
 meshcat.StartRecording()

@@ -32,7 +32,7 @@ class TemplateController(LeafSystem):
 
         self.input_port = self.DeclareVectorInputPort(
                 "x_hat",
-                BasicVector(17 + 16))  # 17 positions, 16 velocities
+                BasicVector(19 + 18))  # 19 positions, 18 velocities
 
         # We'll do some fancy caching stuff so that both outputs can be
         # computed with the same method.
