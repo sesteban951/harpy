@@ -32,10 +32,6 @@ class PlanarRaibertController(LeafSystem):
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
 
-        self.input_port = self.DeclareVectorInputPort(
-                "x_hat",
-                BasicVector(13 + 13))  # 13 positions and velocities
-
         # Store some frames that we'll use in the future
         self.torso_frame = self.plant.GetFrameByName("Torso")
         self.left_foot_frame = self.plant.GetFrameByName("FootLeft")
@@ -45,6 +41,10 @@ class PlanarRaibertController(LeafSystem):
         self.ball_tarsus_right_frame = self.plant.GetFrameByName("BallTarsusRight")
         self.ball_femur_left_frame = self.plant.GetFrameByName("BallFemurLeft")
         self.ball_femur_right_frame = self.plant.GetFrameByName("BallFemurRight")
+        
+        self.input_port = self.DeclareVectorInputPort(
+                "x_hat",
+                BasicVector(13 + 13))  # 13 positions and velocities
 
         # We'll do some fancy caching stuff so that both outputs can be
         # computed with the same method.
@@ -75,6 +75,14 @@ class PlanarRaibertController(LeafSystem):
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
+
+        # TODO: store some curves for the swing foot trajectories
+        self.left_foot_curve = BezierCurve(...)
+        self.right_foot_curve = BezierCurve(...)
+
+    def UpdateSwingFootTargets(self, ....):
+        # TODO: update the swing foot targets based on the current state
+        self.left_foot_curve = ...
 
     def DoInverseKinematics(self, p_left, p_right, p_torso):
         """
@@ -129,6 +137,11 @@ class PlanarRaibertController(LeafSystem):
         # Set our internal model to match the state estimte
         x_hat = self.EvalVectorInput(context, 0).get_value()
         self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
+
+        # Update the target swing trajectory
+        # TODO
+        self.UpdateSwingFootTargets()
+        p_left_target = self.left_foot_curve(t)
 
         # Query the position of the CoM in the world frame
         p_com = self.plant.CalcCenterOfMassPositionInWorld(self.plant_context)

@@ -9,6 +9,7 @@
 import numpy as np
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
+import matplotlib.pyplot as plt
 
 # Simulation parameters
 sim_time = 10.0  # seconds
@@ -145,6 +146,11 @@ plant.SetPositions(plant_context, q0)
 simulator = Simulator(diagram, diagram_context)
 simulator.set_target_realtime_rate(realtime_rate)
 simulator.Initialize()
+
+# Visualize the diagram
+plt.figure()
+plot_system_graphviz(diagram)
+plt.show()
 
 # Run the sim
 meshcat.StartRecording()
