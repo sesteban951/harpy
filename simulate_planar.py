@@ -10,6 +10,9 @@ import numpy as np
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
 
+# Whether to apply artificial forces on the robot's base to hold it in the air
+hold_the_robot = True
+
 # Simulation parameters
 sim_time = 10.0  # seconds
 realtime_rate = 1
@@ -57,7 +60,8 @@ plant.AddDistanceConstraint(
     0.32)
 
 # Disable gravity (for debugging)
-plant.gravity_field().set_gravity_vector([0, 0, 0])
+if hold_the_robot:
+    plant.gravity_field().set_gravity_vector([0, 0, 0])
 
 # Set up control strategy. The user-designed controller supplies nominal joint
 # angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
@@ -76,6 +80,44 @@ for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
         PdControllerGains(p=Kp, d=Kd)
     )
 plant.Finalize()
+
+if hold_the_robot:
+    # Add a controller that holds the robot up (for debugging)
+    class HoldingController(LeafSystem):
+        """
+        A simple PD controller that applies forces and torques to the robot's base,
+        in an effort to hold it in place. Similar to a human holding the robot up on
+        hardware. 
+        """
+        def __init__(self):
+            LeafSystem.__init__(self)
+            self.DeclareVectorInputPort("robot_state", BasicVector(26))
+            self.DeclareVectorOutputPort("generalized_forces", BasicVector(13),
+                    self.SetOutput)
+
+        def SetOutput(self, context, output):
+            x = self.EvalVectorInput(context, 0).get_value()
+            tau = np.zeros(13)
+
+            # Set up a PD controller on the pose of the base frame
+            pose = x[0:3]  # x, z, theta
+            pose_nom = np.array([0, 0.515, 0])
+            twist = x[13:16]  # xdot, zdot, thetadot
+            twist_nom = np.zeros(3)
+
+            Kp = 100
+            Kd = 15
+            tau[0:3] = -Kp * (pose - pose_nom) - Kd * (twist - twist_nom)
+
+            output.set_value(tau)
+
+    holder = builder.AddSystem(HoldingController())
+    builder.Connect(
+            plant.get_state_output_port(),
+            holder.GetInputPort("robot_state"))
+    builder.Connect(
+            holder.GetOutputPort("generalized_forces"),
+            plant.get_applied_generalized_force_input_port())
 
 # Add thrusters
 left_thruster = builder.AddSystem(

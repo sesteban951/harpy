@@ -107,11 +107,12 @@ class PlanarRaibertController(LeafSystem):
                 self.ball_tarsus_right_frame, [0, 0, 0],
                 self.ball_femur_right_frame, [0, 0, 0], 0.32, 0.32)
 
-        # Constrain the positions of the feet
+        # Constrain the positions of the feet to within a small box
+        eps = 1e-5
         ik.AddPositionConstraint(self.left_foot_frame, [0, 0, 0],
-                self.plant.world_frame(), p_left, p_left)
+                self.plant.world_frame(), p_left - eps, p_left + eps)
         ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
-                self.plant.world_frame(), p_right, p_right)
+                self.plant.world_frame(), p_right - eps, p_right + eps)
 
         res = SnoptSolver().Solve(ik.prog())
         assert res.is_success(), "Inverse Kinematics Failed!"
@@ -146,9 +147,13 @@ class PlanarRaibertController(LeafSystem):
 
         # Do some inverse kinematics to find joint angles that set a new foot
         # position
-        p_left_target = p_left
-        p_right_target = np.array([0.0, -0.065, 0.05])[None].T
+        p_left_target = np.array([0.0, 0.065, 0.2])[None].T
+        p_right_target = np.array([0.0, -0.065, 0.04])[None].T
         q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso)
+
+        print(p_left - p_left_target)
+        print(p_right - p_right_target)
+        print("")
 
         # Map generalized positions from IK to actuated joint angles
         q_nom = np.array([
