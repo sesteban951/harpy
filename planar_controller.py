@@ -118,6 +118,105 @@ class PlanarRaibertController(LeafSystem):
         assert res.is_success(), "Inverse Kinematics Failed!"
         
         return res.GetSolution(ik.q())
+    
+    def SolveInverseDynamicsQp(self, pdd_left_nom, pdd_right_nom, pdd_com_nom):
+        """
+        Solve the whole-body QP
+
+                min_{q'', τ, λ} ||p''_left - p''_left_nom||^2 + 
+                                ||p''_right - p''_right_nom||^2 + 
+                                ||p''_com - p''_com_nom||^2 +
+                                ||τ||^2
+                s.t. D(q)q'' + h(q,q') = Bτ + J^Tλ
+                     J_h q'' + J'_h q' = 0
+                     J_f q'' + J'_f q' = 0
+                     λ >= 0
+                     λ in friction cones
+
+        for control torques τ that we'll apply on the robot. 
+
+        Args:
+                pdd_left_nom: desired acceleration of the left foot
+                pdd_right_nom: desired acceleration of the right foot
+                pdd_com_nom: desired acceleration of the CoM
+
+        Returns:
+                tau: joint torques that will achieve the desired accelerations
+
+        Note: assumes that self.plant_context holds the current state
+        """
+        # Set up a mathematical program
+        # TODO(vincekurtz): allocate this in the constructor and just update
+        # constraints as needed
+        mp = MathematicalProgram()
+
+        # Add decision variables for the joint accelerations, joint torques, and
+        # contact forces
+        qdd = mp.NewContinuousVariables(self.plant.num_velocities(), "qdd")
+        tau = mp.NewContinuousVariables(self.plant.num_actuators(), "tau")
+        lambda_left = mp.NewContinuousVariables(3, "lambda_left")
+        lambda_right = mp.NewContinuousVariables(3, "lambda_right")
+
+        # Add the left foot tracking cost
+        # ||p''_left - p''_left_nom||^2
+        J_left = self.plant.CalcJacobianTranslationalVelocity(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.left_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                self.plant.world_frame())
+        Jdqd_left = self.plant.CalcBiasTranslationalAcceleration(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.left_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                self.plant.world_frame()).flatten()
+        pdd_left = J_left @ qdd + Jdqd_left
+        mp.AddQuadraticCost((pdd_left - pdd_left_nom).dot(pdd_left - pdd_left_nom), is_convex=True)
+
+        # Add the right foot tracking cost
+        # ||p''_right - p''_right_nom||^2
+        J_right = self.plant.CalcJacobianTranslationalVelocity(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.right_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                self.plant.world_frame())
+        Jdqd_right = self.plant.CalcBiasTranslationalAcceleration(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.right_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                self.plant.world_frame()).flatten()
+        pdd_right = J_right @ qdd + Jdqd_right
+        mp.AddQuadraticCost((pdd_right - pdd_right_nom).dot(pdd_right - pdd_right_nom), is_convex=True)
+
+        # Add the CoM tracking cost
+        # ||p''_com - p''_com_nom||^2
+        J_com = self.plant.CalcJacobianCenterOfMassTranslationalVelocity(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.plant.world_frame(), self.plant.world_frame())
+        Jdqd_com = self.plant.CalcBiasCenterOfMassTranslationalAcceleration(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.plant.world_frame(), self.plant.world_frame()).flatten()
+        pdd_com = J_com @ qdd + Jdqd_com
+        mp.AddQuadraticCost((pdd_com - pdd_com_nom).dot(pdd_com - pdd_com_nom), is_convex=True)
+
+        # Add the torque penalty
+        # ||τ||^2
+        mp.AddQuadraticCost(tau.dot(tau), is_convex=True)
+
+        # Add the inverse dynamics constraint
+        # D(q)q'' + h(q,q') = Bτ + J^Tλ
+        D = self.plant.CalcMassMatrix(self.plant_context)
+        H = self.plant.CalcBiasTerm(self.plant_context)
+        B = self.plant.MakeActuationMatrix()
+        mp.AddConstraint(eq(D @ qdd + H, B @ tau))
+
+        # Add the holonomic constraint that enforces the four-bar linkage distances
+        # J_h q'' + J'_h q' = 0
+
+
+        res = OsqpSolver().Solve(mp)
+        assert res.is_success(), "Inverse Dynamics QP Failed!"
+
+
+
+
+
+
 
     def CalcOutput(self, context):
         """
@@ -130,38 +229,53 @@ class PlanarRaibertController(LeafSystem):
         # Set our internal model to match the state estimte
         x_hat = self.EvalVectorInput(context, 0).get_value()
         self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
+        q = x_hat[:self.plant.num_positions()]
+        qd = x_hat[self.plant.num_positions():]
 
         # Query the position of the CoM in the world frame
-        p_com = self.plant.CalcCenterOfMassPositionInWorld(self.plant_context)
+        p_com = self.plant.CalcCenterOfMassPositionInWorld(
+            self.plant_context).flatten()
 
-        # Query the position of the torso and the feet in the world frame
-        p_torso = self.plant.CalcPointsPositions(
-                self.plant_context, self.torso_frame,
-                [0, 0, 0], self.plant.world_frame())
+        # Query the position of the feet in the world frame
         p_left = self.plant.CalcPointsPositions(
                 self.plant_context, self.left_foot_frame,
-                [0, 0, 0], self.plant.world_frame())
+                [0, 0, 0], self.plant.world_frame()).flatten()
         p_right = self.plant.CalcPointsPositions(
                 self.plant_context, self.right_foot_frame,
-                [0, 0, 0], self.plant.world_frame())
+                [0, 0, 0], self.plant.world_frame()).flatten()
+        
+        # Compute jacobians of the foot and CoM positions
+        J_com = self.plant.CalcJacobianCenterOfMassTranslationalVelocity(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.plant.world_frame(), self.plant.world_frame())
 
-        # Do some inverse kinematics to find joint angles that set a new foot
-        # position
-        p_left_target = np.array([0.0, 0.065, 0.2])[None].T
-        p_right_target = np.array([0.0, -0.065, 0.04])[None].T
-        q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso)
+        J_left = self.plant.CalcJacobianTranslationalVelocity(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.left_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                self.plant.world_frame())
+        J_right = self.plant.CalcJacobianTranslationalVelocity(
+                self.plant_context, JacobianWrtVariable.kV,
+                self.right_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                self.plant.world_frame())
+        
+        # Define target positions for the CoM and feet
+        # TODO: compute these using a reduced-order model + swing foot splines
+        p_left_target = np.array([0.0, 0.065, 0.2])
+        p_right_target = np.array([0.0, -0.065, 0.04])
+        p_com_target = np.array([0.0, 0.0, 0.525])
 
-        print(p_left - p_left_target)
-        print(p_right - p_right_target)
-        print("")
+        # Use a PD controller to compute desired accelerations
+        pd_left = J_left @ qd
+        pd_right = J_right @ qd
+        pd_com = J_com @ qd
+        pdd_left_nom = 100 * (p_left_target - p_left) - 10 * pd_left
+        pdd_right_nom = 100 * (p_right_target - p_right) - 10 * pd_right
+        pdd_com_nom = 100 * (p_com_target - p_com) - 10 * pd_com
 
-        # Map generalized positions from IK to actuated joint angles
-        q_nom = np.array([
-            q_ik[3], q_ik[4],   # thrusters
-            q_ik[5], q_ik[6],   # hip
-            q_ik[9], q_ik[10]])  # knee
-        v_nom = np.zeros(6)
-        x_nom = np.block([q_nom, v_nom])
+        # Solve the whole-body QP to compute joint torques
+        tau = self.SolveInverseDynamicsQp(pdd_left_nom, pdd_right_nom, pdd_com_nom)
+
+        x_nom = np.zeros(12)
 
         return {"tau_ff": np.zeros(6), "x_nom": x_nom, "thrust": np.zeros(2)}
 
