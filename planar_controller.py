@@ -1,4 +1,5 @@
 from pydrake.all import *
+import numpy as np
 
 class PlanarRaibertController(LeafSystem):
     """
@@ -27,7 +28,7 @@ class PlanarRaibertController(LeafSystem):
         LeafSystem.__init__(self)
 
         # Create an internal system model for IK calculations, etc.
-        self.plant = MultibodyPlant(0.0)
+        self.plant = MultibodyPlant(0.0) # 0.0 indicates continuous time
         Parser(self.plant).AddModels("./models/urdf/harpy_planar.urdf")
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
@@ -148,13 +149,21 @@ class PlanarRaibertController(LeafSystem):
         # position
         p_left_target = p_left
         p_right_target = np.array([0.0, -0.065, 0.05])[None].T
-        q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso)
+        
+        # ccommented for debugging
+        # q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso)
 
         # Map generalized positions from IK to actuated joint angles
-        q_nom = np.array([
-            q_ik[3], q_ik[4],   # thrusters
-            q_ik[5], q_ik[6],   # hip
-            q_ik[9], q_ik[10]])  # knee
+        
+        # for debugging
+        # q_nom = np.array([
+        #     q_ik[3], q_ik[4],   # thrusters
+        #     q_ik[5], q_ik[6],   # hip
+        #     q_ik[9], q_ik[10]])  # knee
+
+        q_ = (3.14/8) * np.sin(1.0*context.get_time())
+
+        q_nom = np.array([0, 0, q_, q_*.4, q_, q_*.1]) 
         v_nom = np.zeros(6)
         x_nom = np.block([q_nom, v_nom])
 

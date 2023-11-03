@@ -47,6 +47,8 @@ plant.RegisterCollisionGeometry(
 
 # Add the harpy model
 harpy = Parser(plant).AddModels(model_file)[0]
+
+# Add distance constraint to 4-bar linkage
 plant.AddDistanceConstraint(
     plant.GetBodyByName("BallTarsusLeft"), [0, 0, 0],
     plant.GetBodyByName("BallFemurLeft"), [0, 0, 0],
@@ -55,9 +57,19 @@ plant.AddDistanceConstraint(
     plant.GetBodyByName("BallTarsusRight"), [0, 0, 0],
     plant.GetBodyByName("BallFemurRight"), [0, 0, 0],
     0.32)
+# Add equal orientation constraints to joints to create planar robot
+hip_left = plant.GetJointByName("HipLeft_FemurLeft")
+hip_right = plant.GetJointByName("HipRight_FemurRight")
+knee_left = plant.GetJointByName("FemurLeft_TibiaLeft")
+knee_right = plant.GetJointByName("FemurRight_TibiaRight")
+
+plant.AddCouplerConstraint(knee_left, knee_right,
+                           1, 0)
+plant.AddCouplerConstraint(hip_left, hip_right,
+                           1, 0)
 
 # Disable gravity (for debugging)
-plant.gravity_field().set_gravity_vector([0, 0, 0])
+plant.gravity_field().set_gravity_vector([0, 0, -0.01])
 
 # Set up control strategy. The user-designed controller supplies nominal joint
 # angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
