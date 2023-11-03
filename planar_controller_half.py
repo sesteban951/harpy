@@ -1,4 +1,5 @@
 from pydrake.all import *
+import numpy as np
 
 class PlanarRaibertController(LeafSystem):
     """
@@ -27,23 +28,19 @@ class PlanarRaibertController(LeafSystem):
         LeafSystem.__init__(self)
 
         # Create an internal system model for IK calculations, etc.
-        self.plant = MultibodyPlant(0.0)
-        Parser(self.plant).AddModels("./models/urdf/harpy_planar.urdf")
+        self.plant = MultibodyPlant(0.0)           # 0.0 indicates continuous time
+        Parser(self.plant).AddModels("./models/urdf/harpy_planar_half.urdf")
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
 
         self.input_port = self.DeclareVectorInputPort(
                 "x_hat",
-                BasicVector(13 + 13))  # 13 positions and velocities
+                BasicVector(8 + 8))  #  4 DoF legs + 1 Dof thruster + 3 DoF base
 
         # Store some frames that we'll use in the future
         self.torso_frame = self.plant.GetFrameByName("Torso")
-        self.left_foot_frame = self.plant.GetFrameByName("FootLeft")
         self.right_foot_frame = self.plant.GetFrameByName("FootRight")
-
-        self.ball_tarsus_left_frame = self.plant.GetFrameByName("BallTarsusLeft")
         self.ball_tarsus_right_frame = self.plant.GetFrameByName("BallTarsusRight")
-        self.ball_femur_left_frame = self.plant.GetFrameByName("BallFemurLeft")
         self.ball_femur_right_frame = self.plant.GetFrameByName("BallFemurRight")
 
         # We'll do some fancy caching stuff so that both outputs can be
@@ -57,21 +54,21 @@ class PlanarRaibertController(LeafSystem):
         
         self.DeclareVectorOutputPort(
                 "tau_ff",
-                BasicVector(6),  # 2 DoF per leg, plus thruster angle
+                BasicVector(3),  # 2 DoF per leg + 1 DoF thruster angle
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["tau_ff"]),
                 prerequisites_of_calc={self._cache.ticket()})
 
         self.DeclareVectorOutputPort(
                 "x_nom",
-                BasicVector(12),  # actuated positions + velocities
+                BasicVector(6),  # q = (knee, hip, thruster_angle), v = "
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["x_nom"]),
                 prerequisites_of_calc={self._cache.ticket()})
 
         self.DeclareVectorOutputPort(
                 "thrust",
-                BasicVector(2),
+                BasicVector(1),
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
@@ -137,25 +134,18 @@ class PlanarRaibertController(LeafSystem):
         p_torso = self.plant.CalcPointsPositions(
                 self.plant_context, self.torso_frame,
                 [0, 0, 0], self.plant.world_frame())
-        p_left = self.plant.CalcPointsPositions(
-                self.plant_context, self.left_foot_frame,
-                [0, 0, 0], self.plant.world_frame())
         p_right = self.plant.CalcPointsPositions(
                 self.plant_context, self.right_foot_frame,
                 [0, 0, 0], self.plant.world_frame())
 
-        # Do some inverse kinematics to find joint angles that set a new foot
-        # position
-        p_left_target = p_left
-        p_right_target = np.array([0.0, -0.065, 0.05])[None].T
-        q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso)
+        # some random sine function as inputs to track
+        A = 3.14/12
+        ang_freq = 1.0
+        q_ = A * np.sin(ang_freq*context.get_time())
+        v_ = ang_freq*A*np.cos(ang_freq*context.get_time())
 
-        # Map generalized positions from IK to actuated joint angles
-        q_nom = np.array([
-            q_ik[3], q_ik[4],   # thrusters
-            q_ik[5], q_ik[6],   # hip
-            q_ik[9], q_ik[10]])  # knee
-        v_nom = np.zeros(6)
+        q_nom = np.array([q_, q_, q_]) 
+        v_nom = np.array([v_, v_, v_]) 
         x_nom = np.block([q_nom, v_nom])
 
-        return {"tau_ff": np.zeros(6), "x_nom": x_nom, "thrust": np.zeros(2)}
+        return {"tau_ff": np.zeros(3), "x_nom": x_nom, "thrust": np.zeros(1)}

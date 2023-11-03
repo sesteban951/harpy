@@ -1,0 +1,266 @@
+<?xml version="1.0"?>
+
+<!-- Harpy Model with half the limbs  for Saggital Plane-->
+<!-- units are in SI -->
+<robot name="harpy">
+
+    <!-- *************************** MATERIALS *************************** -->
+    <material name="black">
+        <color rgba="0.2 0.2 0.2 1"/>
+    </material>
+
+    <!-- *************************** LINKS *************************** -->
+    <!-- Torso -->
+    <link name="Torso">
+        <inertial>
+            <origin rpy="0 0 0" xyz="-0.011491 -0.00031059 0.1207"/>
+            <mass value="2.3"/>
+            <inertia ixx="0.046119" ixy="6.3449e-05" ixz="-0.0026552" iyy="0.027023" iyz="4.9492e-05" izz="0.028794"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/TorsoPelvis.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/TorsoPelvis.OBJ"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Thrusters -->
+    <link name="ThrusterRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="-1.0844e-09 -0.049128 -0.0051344"/>
+            <mass value="0.36"/>
+            <inertia ixx="0.00032298" ixy="1.5939e-11" ixz="-4.6573e-11" iyy="0.00030947" iyz="-1.6116e-06" izz="0.00028441"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Thruster.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Thruster.OBJ"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Hips -->
+    <link name="HipRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.04036 0.032494 8.7274e-09"/>
+            <mass value="0.27"/>
+            <inertia ixx="0.00026224" ixy="-0.00011762" ixz="-3.1403e-10" iyy="0.00028925" iyz="-1.9092e-10" izz="0.0004175"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Hip.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Hip.OBJ"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Femur (I am Quadzilla) -->
+    <link name="FemurRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.037565 -7.5935e-07 -0.065064"/>
+            <mass value="0.2"/>
+            <inertia ixx="0.00063531" ixy="1.064e-10" ixz="0.00034112" iyy="0.00082998" iyz="-1.839e-10" izz="0.00024142"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/FemurRight.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/FemurRight.OBJ"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Tibia -->
+    <link name="TibiaRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="-0.099627 1.975e-08 -0.1193"/>
+            <mass value="0.28"/>
+            <inertia ixx="0.0021144" ixy="-2.7326e-10" ixz="-0.0017323" iyy="0.0035763" iyz="5.0923e-10" izz="0.0014868"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Tibia.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Tibia.OBJ"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Tarsus -->
+    <link name="TarsusRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.030104 -1.5782e-06 -0.048636"/>
+            <mass value="0.09"/>
+            <inertia ixx="0.00028423" ixy="6.9762e-10" ixz="0.00016923" iyy="0.00041167" iyz="-8.1315e-09" izz="0.00013797"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Tarsus.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Tarsus.OBJ"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Feet -->
+    <link name="FootRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 0.0 0.0"/>
+            <mass value="0.1"/>
+            <inertia ixx="0.1" ixy="0.0" ixz="0.0" iyy="0.1" iyz="0.0" izz="0.1"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Foot.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/Foot.OBJ"/>
+            </geometry>
+            <drake:proximity_properties>
+                <drake:rigid_hydroelastic/>
+                <drake:mu_dynamic value="0.5"/>
+                <drake:hunt_crossley_dissipation value="1.25"/>
+            </drake:proximity_properties>
+        </collision>
+    </link>
+
+    <!-- Ball -->
+    <link name="BallTarsusRight">
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Ball.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+    <link name="BallFemurRight">
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/Ball.OBJ"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+    </link>
+
+    <!-- *************************** JOINTS *************************** -->
+    <!-- Torso to world -->
+    <joint name="World_Torso" type="planar">
+        <parent link="world"/>
+        <child link="Torso"/>
+        <axis xyz="0 -1 0"/>
+        <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Thrusters to Torso -->
+    <joint name="Torso_ThrusterRight" type="continuous">
+        <parent link="Torso"/>
+        <child link="ThrusterRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="-0.028 -0.2 0.16" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Hips to Torso -->
+    <joint name="Torso_HipRight" type="fixed">
+        <parent link="Torso"/>
+        <child link="HipRight"/>
+        <axis xyz="1 0 0"/>
+        <origin xyz="0.0 -0.1 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Femur to Hips -->
+    <joint name="HipRight_FemurRight" type="continuous">
+        <parent link="HipRight"/>
+        <child link="FemurRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.06549 0.0 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Tibia to Femur -->
+    <joint name="FemurRight_TibiaRight" type="continuous">
+        <parent link="FemurRight"/>
+        <child link="TibiaRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.07513 0.035 -0.13013" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Tarsus to Tibia -->
+    <joint name="TibiaRight_TarsusRight" type="continuous">
+        <parent link="TibiaRight"/>
+        <child link="TarsusRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="-0.20512 0.0 -0.24561" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Feet to Tarsus -->
+    <joint name="TarsusRight_FootRight" type="continuous">
+        <parent link="TarsusRight"/>
+        <child link="FootRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.0645 0.0 -0.11172" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Ball to Femur-->
+    <joint name="FemurRight_BallFemurRight" type="fixed">
+        <parent link="FemurRight"/>
+        <child link="BallFemurRight"/>
+        <origin xyz="0.04513 0.035 -0.07817" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Ball to Tarsus -->
+    <joint name="TarsusRight_BallTarsusRight" type="fixed">
+        <parent link="TarsusRight"/>
+        <child link="BallTarsusRight"/>
+        <origin xyz="-0.03 0.0 0.05196" rpy="0.0 0.0 0.0"/>
+    </joint>
+    
+    <!-- *************************** ACTUATORS *************************** -->
+    <transmission name="Torso_ThrusterRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="Torso_ThrusterRight"/>
+        <actuator name="Torso_ThrusterRight"/>
+    </transmission>
+    
+    <transmission name="HipRight_FemurRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="HipRight_FemurRight"/>
+        <actuator name="HipRight_FemurRight"/>
+    </transmission>
+
+    <transmission name="FemurRight_TibiaRight">
+        <type>transmission_interface/SimpleTransmission</type>
+        <joint name="FemurRight_TibiaRight"/>
+        <actuator name="FemurRight_TibiaRight"/>
+    </transmission>
+    
+</robot>

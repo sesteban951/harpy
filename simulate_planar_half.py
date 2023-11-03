@@ -8,13 +8,13 @@
 
 import numpy as np
 from pydrake.all import *
-from planar_controller import PlanarRaibertController
+from planar_controller_half import PlanarRaibertController
 
 # Simulation parameters
 sim_time = 10.0  # seconds
 realtime_rate = 1
 
-model_file = "./models/urdf/harpy_planar.urdf"
+model_file = "./models/urdf/harpy_planar_half.urdf"
 
 config = MultibodyPlantConfig()
 config.time_step = 1e-2
@@ -47,10 +47,8 @@ plant.RegisterCollisionGeometry(
 
 # Add the harpy model
 harpy = Parser(plant).AddModels(model_file)[0]
-plant.AddDistanceConstraint(
-    plant.GetBodyByName("BallTarsusLeft"), [0, 0, 0],
-    plant.GetBodyByName("BallFemurLeft"), [0, 0, 0],
-    0.32)
+
+# Add distance constraint to 4-bar linkage
 plant.AddDistanceConstraint(
     plant.GetBodyByName("BallTarsusRight"), [0, 0, 0],
     plant.GetBodyByName("BallFemurRight"), [0, 0, 0],
@@ -78,39 +76,14 @@ for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
 plant.Finalize()
 
 # Add thrusters
-left_thruster = builder.AddSystem(
-        Propeller(plant.GetBodyByName("ThrusterLeft").index()))
 right_thruster = builder.AddSystem(
         Propeller(plant.GetBodyByName("ThrusterRight").index()))
-
-spatial_force_multiplexer = builder.AddSystem(  # combines forces of both props
-        ExternallyAppliedSpatialForceMultiplexer(2))
-
-builder.Connect(
-        plant.get_body_poses_output_port(),
-        left_thruster.get_body_poses_input_port())
 builder.Connect(
         plant.get_body_poses_output_port(),
         right_thruster.get_body_poses_input_port())
-
-builder.Connect(
-        left_thruster.get_spatial_forces_output_port(),
-        spatial_force_multiplexer.get_input_port(0))
 builder.Connect(
         right_thruster.get_spatial_forces_output_port(),
-        spatial_force_multiplexer.get_input_port(1))
-builder.Connect(
-        spatial_force_multiplexer.get_output_port(),
         plant.get_applied_spatial_force_input_port())
-
-thruster_demux = builder.AddSystem(
-    Demultiplexer(2, 1))
-builder.Connect(
-        thruster_demux.get_output_port(0),
-        left_thruster.get_command_input_port())
-builder.Connect(
-        thruster_demux.get_output_port(1),
-        right_thruster.get_command_input_port())
 
 # Add the controller
 controller = builder.AddSystem(
@@ -126,7 +99,7 @@ builder.Connect(
         plant.get_desired_state_input_port(harpy))
 builder.Connect(
         controller.GetOutputPort("thrust"),
-        thruster_demux.get_input_port())
+        right_thruster.get_command_input_port())
 
 AddDefaultVisualization(builder, meshcat)
 diagram = builder.Build()
@@ -134,11 +107,10 @@ diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
 # Set the initial condition
-q0 = np.array([0, 0.515,           # base position
-               0,       # base orientation
-               0, 0,         # thrusters
-               0, 0, 0, 0,   # right leg
-               0, 0, 0, 0])  # left leg
+q0 = np.array([0, 0.515,     # base position
+               0,            # base orientation
+               0,            # thruster
+               0, 0, 0, 0])  # right leg
 plant.SetPositions(plant_context, q0)
 
 # Initialize the sim
@@ -150,3 +122,4 @@ simulator.Initialize()
 meshcat.StartRecording()
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
+
