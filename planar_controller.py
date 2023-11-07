@@ -1,5 +1,11 @@
 from pydrake.all import *
 
+import numpy as np
+import sys 
+
+sys.path.append('./ROM/')
+from LinearInvertedPendulum import LinearInvertedPendulum
+
 class PlanarRaibertController(LeafSystem):
     """
     A simple controller for the planar harpy robot based on the Raibert
@@ -75,8 +81,30 @@ class PlanarRaibertController(LeafSystem):
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
+        
+        # Linear Inverted Pendulum trajecptory generation
+        g  = 9.81                        # gravity [m/s^2]
+        z0 = 0.4                         # const CoM height [m]
 
-    def DoInverseKinematics(self, p_left, p_right, p_torso):
+        z_apex = z0*0.25                 # apex height [m]
+        T = 0.4                          # step period [s]
+        
+        alpha = 0.28                     # raibert controller parameters
+        beta = 1                         # raibert controller parameters
+        
+        N = 1                            # number of steps
+        x0 = np.array([0.01,0.01])       # initial state [m, m/s]
+        dt = 0.01                        # time step [s]
+
+        LIP = LinearInvertedPendulum(N,x0)
+        LIP.set_physical_params(g,z0)
+        LIP.set_walking_params(z_apex,T)
+        LIP.set_raibert_params(alpha,beta)
+        LIP.set_traj_settings(N,dt,x0)
+
+        [self.t, self.x, self.b] = LIP.make_trajectories()
+
+    def DoInverseKinematics(self, p_left, p_right, p_torso, epsilon=1e-2):
         """
         Solve an inverse kinematics problem, reporting joint angles that will
         correspond to the desired positions of the feet and torso in the world.
@@ -85,6 +113,7 @@ class PlanarRaibertController(LeafSystem):
             p_left: desired position of the left foot in the world frame
             p_right: desired position of the right foot in the world frame
             p_base: desired position of the torso in the world frame
+            epsilon: tolerance for positions
 
         Returns:
             q: Joint angles that set the feet and torso where we want them
@@ -93,11 +122,36 @@ class PlanarRaibertController(LeafSystem):
         # updating the constraints when this method is called
         ik = InverseKinematics(self.plant)
 
+        # set tolerance vector
+        tol = np.array([[epsilon], [1000], [epsilon]])
+
         # Fix the torso frame in the world
         # TODO(vincekurtz): consider using the joint locking API for the
         # floating base instead
+        p_torso_lb = p_torso - tol
+        p_torso_ub = p_torso + tol
+
         ik.AddPositionConstraint(self.torso_frame, [0, 0, 0],
-                self.plant.world_frame(), p_torso, p_torso)
+                self.plant.world_frame(), p_torso_lb, p_torso_ub)
+
+        # Constrain the positions of the feet , (add bounding boxes in y-direction)
+        p_left_lb = p_left - tol
+        p_left_ub = p_left + tol
+        p_right_lb = p_right - tol
+        p_right_ub = p_right + tol
+        ik.AddPositionConstraint(self.left_foot_frame, [0, 0, 0],
+                self.plant.world_frame(), p_left_lb, p_left_ub)
+        ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
+                self.plant.world_frame(), p_right_lb, p_right_ub)
+
+        # add torso posture constraint
+        q = np.array([1,0,1,0])
+        q = q / np.linalg.norm(q)
+        q = Quaternion(q)
+        R = RotationMatrix(q)
+
+        # ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(q),
+                # self.plant.world_frame(), R, 0)
 
         # Add distance constraints for the 4-bar linkages
         ik.AddPointToPointDistanceConstraint(
@@ -107,12 +161,7 @@ class PlanarRaibertController(LeafSystem):
                 self.ball_tarsus_right_frame, [0, 0, 0],
                 self.ball_femur_right_frame, [0, 0, 0], 0.32, 0.32)
 
-        # Constrain the positions of the feet
-        ik.AddPositionConstraint(self.left_foot_frame, [0, 0, 0],
-                self.plant.world_frame(), p_left, p_left)
-        ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
-                self.plant.world_frame(), p_right, p_right)
-
+        # attempt to solve the IK problem        
         res = SnoptSolver().Solve(ik.prog())
         assert res.is_success(), "Inverse Kinematics Failed!"
         
@@ -143,6 +192,8 @@ class PlanarRaibertController(LeafSystem):
         p_right = self.plant.CalcPointsPositions(
                 self.plant_context, self.right_foot_frame,
                 [0, 0, 0], self.plant.world_frame())
+
+        p_left = np.array([-0.0,0.065,0.15])[None].T
 
         # Do some inverse kinematics to find joint angles that set a new foot
         # position

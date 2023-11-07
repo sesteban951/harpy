@@ -57,7 +57,8 @@ plant.AddDistanceConstraint(
     0.32)
 
 # Disable gravity (for debugging)
-plant.gravity_field().set_gravity_vector([0, 0, 0])
+
+plant.gravity_field().set_gravity_vector([0, 0, -1])
 
 # Set up control strategy. The user-designed controller supplies nominal joint
 # angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
@@ -68,8 +69,8 @@ plant.gravity_field().set_gravity_vector([0, 0, 0])
 #
 # This is a rough imitation of a low-level motor control strategy that might
 # run on the hardware.
-Kp = 50 * np.ones(plant.num_actuators())
-Kd = 5 * np.ones(plant.num_actuators())
+Kp = 20 * np.ones(plant.num_actuators())
+Kd = 15 * np.ones(plant.num_actuators())
 actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
     plant.get_joint_actuator(actuator_index).set_controller_gains(
