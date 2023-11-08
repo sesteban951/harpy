@@ -7,12 +7,14 @@
 ##
 
 import numpy as np
+import matplotlib.pyplot as plt
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
 
 # Simulation parameters
-sim_time = 5.0  # seconds
-realtime_rate = 1
+sim_time = 2.0       # seconds
+realtime_rate = 1    # speed of simulation relative to real time
+plot_state = True   # plot the state data
 
 model_file = "./models/urdf/harpy_planar.urdf"
 
@@ -57,7 +59,7 @@ plant.AddDistanceConstraint(
     0.32)
 
 # Disable gravity (for debugging)
-plant.gravity_field().set_gravity_vector([0, 0, -0.1])
+plant.gravity_field().set_gravity_vector([0, 0, -3.7])
 
 # Set up control strategy. The user-designed controller supplies nominal joint
 # angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
@@ -128,13 +130,16 @@ builder.Connect(
         controller.GetOutputPort("thrust"),
         thruster_demux.get_input_port())
 
+# logger for state data
+logger = LogVectorOutput(plant.get_state_output_port(), builder)
+
 AddDefaultVisualization(builder, meshcat)
 diagram = builder.Build()
 diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
 # Set the initial condition
-q0 = np.array([0, 0.514,     # base position (514 mm default height)
+q0 = np.array([0, 0.5,     # base position (514 mm default height)
                0,            # base orientation
                0, 0,         # thrusters
                0, 0, 0, 0,   # right leg
@@ -156,3 +161,89 @@ simulator.Initialize()
 meshcat.StartRecording()
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
+
+# plot the state data
+if plot_state:
+	# get the state log
+	state_log = logger.FindLog(diagram_context)
+	time = state_log.sample_times()
+	data = state_log.data().transpose()
+
+	# Parse the state data
+	pos_base = data[:, 0:2]
+	ang_base = data[:, 2]
+	pos_thruster = data[:, 3:5]
+	pos_right_leg = data[:, 5:9]
+	pos_left_leg = data[:, 9:13]
+
+	vel_base = data[:, 13:15]
+	ang_vel_base = data[:, 15]
+	vel_thruster = data[:, 16:18]
+	vel_right_leg = data[:, 18:22]
+	vel_left_leg = data[:, 22:26]
+
+	# Create a figure with subplots
+	fig, axs = plt.subplots(5, 2, sharex=True)
+
+	# Base Position
+	axs[0, 0].plot(time, pos_base)
+	axs[0, 0].set_ylabel("Position [m]")
+	axs[0, 0].legend(["x", "z"])
+	axs[0, 0].set_title("Base Pos")
+	axs[0, 0].grid(True)
+	axs[0, 1].plot(time, vel_base)
+	axs[0, 1].set_ylabel("Velocity [m/s]")
+	axs[0, 1].legend(["x", "z"])
+	axs[0, 1].set_title("Base Vel")
+	axs[0, 1].grid(True)
+
+	# Base Orientation
+	axs[1, 0].plot(time, ang_base)
+	axs[1, 0].set_ylabel("Orientation [rad]")
+	axs[1, 0].set_title("Base Pitch Pos")
+	axs[1, 0].grid(True)
+	axs[1, 1].plot(time, ang_vel_base)
+	axs[1, 1].set_ylabel("Angular Velocity [rad/s]")
+	axs[1, 1].set_title("Base Pitch Vel")
+	axs[1, 1].grid(True)
+
+	# Thruster Orientation
+	axs[2, 0].plot(time, pos_thruster)
+	axs[2, 0].set_ylabel("Position [rad]")
+	axs[2, 0].legend(["R", "L"])
+	axs[2, 0].set_title("Thruster Pos")
+	axs[2, 0].grid(True)
+	axs[2, 1].plot(time, vel_thruster)
+	axs[2, 1].set_ylabel("Velocity [rad/s]")
+	axs[2, 1].legend(["R", "L"])
+	axs[2, 1].set_title("Thruster Vel")
+	axs[2, 1].grid(True)
+
+	# Right Leg orietnation
+	axs[3, 0].plot(time, pos_right_leg)
+	axs[3, 0].set_ylabel("Position [rad]")
+	axs[3, 0].legend(["q1", "q2", "q3", "q4"])
+	axs[3, 0].set_title("Right Leg Pos")
+	axs[3, 0].grid(True)
+	axs[3, 1].plot(time, vel_right_leg)
+	axs[3, 1].set_ylabel("Velocity [rad/s]")
+	axs[3, 1].legend(["q1", "q2", "q3", "q4"])
+	axs[3, 1].set_title("Right Leg Vel")
+	axs[3, 1].grid(True)
+
+	# Left leg orientation
+	axs[4, 0].plot(time, pos_left_leg)
+	axs[4, 0].set_xlabel("Time [s]")
+	axs[4, 0].set_ylabel("Position [rad]")
+	axs[4, 0].legend(["q1", "q2", "q3", "q4"])
+	axs[4, 0].set_title("Left Leg Pos")
+	axs[4, 0].grid(True)
+	axs[4, 1].plot(time, vel_left_leg)
+	axs[4, 1].set_xlabel("Time [s]")
+	axs[4, 1].set_ylabel("Velocity [rad/s]")
+	axs[4, 1].legend(["q1", "q2", "q3", "q4"])
+	axs[4, 1].set_title("Left Leg Vel")
+	axs[4, 1].grid(True)
+
+	# Show the plot
+	plt.show()
