@@ -33,7 +33,7 @@ class PlanarRaibertController(LeafSystem):
         LeafSystem.__init__(self)
 
         # Create an internal system model for IK calculations, etc.
-        self.plant = MultibodyPlant(0.0)
+        self.plant = MultibodyPlant(0)
         Parser(self.plant).AddModels("./models/urdf/harpy_planar.urdf")
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
@@ -51,6 +51,10 @@ class PlanarRaibertController(LeafSystem):
         self.ball_tarsus_right_frame = self.plant.GetFrameByName("BallTarsusRight")
         self.ball_femur_left_frame = self.plant.GetFrameByName("BallFemurLeft")
         self.ball_femur_right_frame = self.plant.GetFrameByName("BallFemurRight")
+
+        # Store center of mass variables for CoM position and velocity wrt world
+        self.p_com = None
+        self.v_com = None
 
         # We'll do some fancy caching stuff so that both outputs can be
         # computed with the same method.
@@ -81,28 +85,25 @@ class PlanarRaibertController(LeafSystem):
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
-        
-        # Linear Inverted Pendulum trajecptory generation
-        g  = 9.81                        # gravity [m/s^2]
-        z0 = 0.4                         # const CoM height [m]
 
-        z_apex = z0*0.25                 # apex height [m]
-        T = 0.4                          # step period [s]
-        
+        # Linear Inverted Pendulum trajectory generation
+        g  = 9.81                        # gravity [m/s^2]
+        z0 = 0.3                         # const CoM height [m]
+        self.z_apex = 0.25               # apex height [m]
+        self.T = 1.0                     # step period [s]
         alpha = 0.28                     # raibert controller parameters
         beta = 1                         # raibert controller parameters
-        
         N = 1                            # number of steps
         x0 = np.array([0.01,0.01])       # initial state [m, m/s]
         dt = 0.01                        # time step [s]
 
+        # Linear Inverted Pendulum trajectory generation
         LIP = LinearInvertedPendulum(N,x0)
         LIP.set_physical_params(g,z0)
-        LIP.set_walking_params(z_apex,T)
+        LIP.set_walking_params(self.z_apex,self.T)
         LIP.set_raibert_params(alpha,beta)
         LIP.set_traj_settings(N,dt,x0)
-
-        [self.t, self.x, self.b] = LIP.make_trajectories()
+        self.t, self.x, self.b = LIP.make_trajectories()
 
     def DoInverseKinematics(self, p_left, p_right, p_torso, epsilon=1e-2):
         """
@@ -122,19 +123,18 @@ class PlanarRaibertController(LeafSystem):
         # updating the constraints when this method is called
         ik = InverseKinematics(self.plant)
 
-        # set tolerance vector
-        tol = np.array([[epsilon], [1000], [epsilon]])
+        # set tolerance vector for postions
+        tol = np.array([[epsilon], [np.inf], [epsilon]])
 
         # Fix the torso frame in the world
         # TODO(vincekurtz): consider using the joint locking API for the
         # floating base instead
         p_torso_lb = p_torso - tol
         p_torso_ub = p_torso + tol
-
         ik.AddPositionConstraint(self.torso_frame, [0, 0, 0],
                 self.plant.world_frame(), p_torso_lb, p_torso_ub)
 
-        # Constrain the positions of the feet , (add bounding boxes in y-direction)
+        # Constrain the positions of the feet with bounding boxes
         p_left_lb = p_left - tol
         p_left_ub = p_left + tol
         p_right_lb = p_right - tol
@@ -143,15 +143,6 @@ class PlanarRaibertController(LeafSystem):
                 self.plant.world_frame(), p_left_lb, p_left_ub)
         ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
                 self.plant.world_frame(), p_right_lb, p_right_ub)
-
-        # add torso posture constraint
-        q = np.array([1,0,1,0])
-        q = q / np.linalg.norm(q)
-        q = Quaternion(q)
-        R = RotationMatrix(q)
-
-        # ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(q),
-                # self.plant.world_frame(), R, 0)
 
         # Add distance constraints for the 4-bar linkages
         ik.AddPointToPointDistanceConstraint(
@@ -167,6 +158,57 @@ class PlanarRaibertController(LeafSystem):
         
         return res.GetSolution(ik.q())
 
+    # Query desired foot position from B-slpine trajectory
+    def get_foot_pos(self, t):
+        
+        # compute step count and swing foot time
+        step_count = np.floor(t/self.T)
+        time = t % self.T
+        
+        # bezier curve offsets
+        z_offset = -0.0  # z-offset for foot 
+        u = 0            # x-direction foot placement
+
+        # compute bezier curve control points, 5-pt bezier
+        ctrl_pts_z = np.array([[0],[0],[(8/3)*self.z_apex],[0],[0]]) + z_offset
+        ctrl_pts_x = np.array([[0],[0],[u/2],[u],[u]])
+        ctrl_pts = np.vstack((ctrl_pts_x.T,ctrl_pts_z.T))
+
+        # evaluate bezier at time t
+        bezier = BezierCurve(0,self.T,ctrl_pts)
+        b = np.array(bezier.value(time))       
+        
+        # choose which foot to move, one in stance and one in swing
+        b_sw = np.array([b.T[0][0], 0.0, b.T[0][1]])[None].T
+        b_st = np.array([0.0, 0.0, 0.0])[None].T
+        if step_count % 2 == 0:
+            p_right = b_sw
+            p_left = b_st
+        else:
+            p_right = b_st
+            p_left = b_sw
+
+        return p_right, p_left
+    
+    # Estimate CoM position and velocity wrt to world frame
+    def update_com(self):
+        
+        # compute p_com
+        p_com = self.plant.CalcCenterOfMassPositionInWorld(self.plant_context)
+
+        # compute v_com, via Jacobian (3x13) and generalized velocity (13x1)
+        J = self.plant.CalcJacobianCenterOfMassTranslationalVelocity(self.plant_context, 
+                                                                     JacobianWrtVariable.kV,
+                                                                     self.plant.world_frame(), 
+                                                                     self.plant.world_frame())
+        v = self.plant.GetVelocities(self.plant_context)
+        v_all = J @ v
+        v_com = v_all[0:3]
+
+        # update CoM info
+        self.p_com = p_com
+        self.v_com = v_com
+
     def CalcOutput(self, context):
         """
         This is where the magic happens. Compute tau_ff, q_nom, and q_nom based
@@ -179,8 +221,8 @@ class PlanarRaibertController(LeafSystem):
         x_hat = self.EvalVectorInput(context, 0).get_value()
         self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
 
-        # Query the position of the CoM in the world frame
-        p_com = self.plant.CalcCenterOfMassPositionInWorld(self.plant_context)
+        # update the CoM position and velocity values
+        self.update_com()
 
         # Query the position of the torso and the feet in the world frame
         p_torso = self.plant.CalcPointsPositions(
@@ -193,19 +235,18 @@ class PlanarRaibertController(LeafSystem):
                 self.plant_context, self.right_foot_frame,
                 [0, 0, 0], self.plant.world_frame())
 
-        p_left = np.array([-0.0,0.065,0.15])[None].T
-
-        # Do some inverse kinematics to find joint angles that set a new foot
-        # position
+        # Do some inverse kinematics to find joint angles that set a new foot position
         p_left_target = p_left
-        p_right_target = np.array([0.0, -0.065, 0.05])[None].T
-        q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso)
+        p_right_target = p_right
+        p_torso_target = p_torso
+        q_ik = self.DoInverseKinematics(p_left_target, p_right_target, p_torso_target, epsilon=1e-4)
 
         # Map generalized positions from IK to actuated joint angles
         q_nom = np.array([
             q_ik[3], q_ik[4],   # thrusters
             q_ik[5], q_ik[6],   # hip
             q_ik[9], q_ik[10]])  # knee
+        # q_nom = np.zeros(6)
         v_nom = np.zeros(6)
         x_nom = np.block([q_nom, v_nom])
 

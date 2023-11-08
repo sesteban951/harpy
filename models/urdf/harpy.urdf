@@ -267,6 +267,10 @@
         </collision>
     </link>
 
+    <!-- Bottom of Foot -->
+    <link name="FootRightBottom"/>
+    <link name="FootLeftBottom"/>
+
     <!-- Ball -->
     <link name="BallTarsusRight">
         <visual>
@@ -384,6 +388,18 @@
         <child link="FootLeft"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0.0645 0.0 -0.11172" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Bottom of Foot to Foot -->
+    <joint name="FootRight_FootRightBottom" type="fixed">
+        <parent link="FootRight"/>
+        <child link="FootRightBottom"/>
+        <origin xyz="0.0 0.0 -0.027" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="FootLeft_FootLeftBottom" type="fixed">
+        <parent link="FootLeft"/>
+        <child link="FootLeftBottom"/>
+        <origin xyz="0.0 0.0 -0.027" rpy="0.0 0.0 0.0"/>
     </joint>
 
     <!-- Ball to Femur-->

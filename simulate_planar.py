@@ -11,7 +11,7 @@ from pydrake.all import *
 from planar_controller import PlanarRaibertController
 
 # Simulation parameters
-sim_time = 10.0  # seconds
+sim_time = 5.0  # seconds
 realtime_rate = 1
 
 model_file = "./models/urdf/harpy_planar.urdf"
@@ -57,8 +57,7 @@ plant.AddDistanceConstraint(
     0.32)
 
 # Disable gravity (for debugging)
-
-plant.gravity_field().set_gravity_vector([0, 0, -1])
+plant.gravity_field().set_gravity_vector([0, 0, -0.1])
 
 # Set up control strategy. The user-designed controller supplies nominal joint
 # angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
@@ -69,8 +68,8 @@ plant.gravity_field().set_gravity_vector([0, 0, -1])
 #
 # This is a rough imitation of a low-level motor control strategy that might
 # run on the hardware.
-Kp = 20 * np.ones(plant.num_actuators())
-Kd = 15 * np.ones(plant.num_actuators())
+Kp = 250 * np.ones(plant.num_actuators())
+Kd = 50 * np.ones(plant.num_actuators())
 actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
     plant.get_joint_actuator(actuator_index).set_controller_gains(
@@ -135,12 +134,18 @@ diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
 # Set the initial condition
-q0 = np.array([0, 0.515,           # base position
-               0,       # base orientation
+q0 = np.array([0, 0.514,     # base position (514 mm default height)
+               0,            # base orientation
                0, 0,         # thrusters
                0, 0, 0, 0,   # right leg
                0, 0, 0, 0])  # left leg
+v0 = np.array([0,0,          # base velocity
+               0,            # base angular velocity
+               0,0,          # thrusters angular velocity
+               0,0,0,0,      # right leg joint angular velocity
+               0,0,0,0])     # left leg joint  angular velocity
 plant.SetPositions(plant_context, q0)
+plant.SetVelocities(plant_context, v0)
 
 # Initialize the sim
 simulator = Simulator(diagram, diagram_context)

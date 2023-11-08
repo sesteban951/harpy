@@ -12,6 +12,7 @@
     <!-- Torso -->
     <link name="Torso">
         <inertial>
+            <!-- <origin rpy="0 0 0" xyz="-0.011491 -0.00031059 0.1207"/> -->
             <origin rpy="0 0 0" xyz="-0.011491 -0.00031059 0.1207"/>
             <mass value="2.3"/>
             <inertia ixx="0.046119" ixy="6.3449e-05" ixz="-0.0026552" iyy="0.027023" iyz="4.9492e-05" izz="0.028794"/>   
@@ -267,6 +268,10 @@
         </collision>
     </link>
 
+    <!-- Bottom of Foot -->
+    <link name="FootRightBottom"/>
+    <link name="FootLeftBottom"/>
+
     <!-- Ball -->
     <link name="BallTarsusRight">
         <visual>
@@ -392,6 +397,18 @@
         <child link="FootLeft"/>
         <axis xyz="0 1 0"/>
         <origin xyz="0.0645 0.0 -0.11172" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Bottom of Foot to Foot -->
+    <joint name="FootRight_FootRightBottom" type="fixed">
+        <parent link="FootRight"/>
+        <child link="FootRightBottom"/>
+        <origin xyz="0.0 0.0 -0.027" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="FootLeft_FootLeftBottom" type="fixed">
+        <parent link="FootLeft"/>
+        <child link="FootLeftBottom"/>
+        <origin xyz="0.0 0.0 -0.027" rpy="0.0 0.0 0.0"/>
     </joint>
 
     <!-- Ball to Femur-->
