@@ -8,13 +8,14 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import webbrowser
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
 
 # Simulation parameters
-sim_time = 2.0       # seconds
-realtime_rate = 1    # speed of simulation relative to real time
-plot_state = True   # plot the state data
+sim_time = 1.5       # seconds
+realtime_rate = 0.1    # speed of simulation relative to real time
+plot_state = False   # plot the state data
 
 model_file = "./models/urdf/harpy_planar.urdf"
 
@@ -33,11 +34,11 @@ plant, scene_graph = AddMultibodyPlant(config, builder)
 # Add a flat ground with friction
 ground_props = ProximityProperties()
 AddContactMaterial(
-        friction=CoulombFriction(static_friction=0.5, dynamic_friction=0.5),
-        dissipation=1.25,
+        friction=CoulombFriction(static_friction=1.0, dynamic_friction=0.7),
+        dissipation=0,
         properties=ground_props)
 AddCompliantHydroelasticPropertiesForHalfSpace(
-        slab_thickness=1.0,
+        slab_thickness=0.1,
         hydroelastic_modulus=1e7,
         properties=ground_props)
 plant.RegisterCollisionGeometry(
@@ -59,7 +60,7 @@ plant.AddDistanceConstraint(
     0.32)
 
 # Disable gravity (for debugging)
-plant.gravity_field().set_gravity_vector([0, 0, -3.7])
+plant.gravity_field().set_gravity_vector([0, 0, -9.81])
 
 # Set up control strategy. The user-designed controller supplies nominal joint
 # angles q_nom, nominal joint velocities v_nom, and a feed-forward torque tau_ff
@@ -139,12 +140,12 @@ diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
 # Set the initial condition
-q0 = np.array([0, 0.5,     # base position (514 mm default height)
+q0 = np.array([0, 0.514,     # base position (514 mm default height)
                0,            # base orientation
                0, 0,         # thrusters
                0, 0, 0, 0,   # right leg
                0, 0, 0, 0])  # left leg
-v0 = np.array([0,0,          # base velocity
+v0 = np.array([-.09,0,          # base velocity
                0,            # base angular velocity
                0,0,          # thrusters angular velocity
                0,0,0,0,      # right leg joint angular velocity
@@ -159,6 +160,7 @@ simulator.Initialize()
 
 # Run the sim
 meshcat.StartRecording()
+webbrowser.open("http://localhost:7000")
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
 
