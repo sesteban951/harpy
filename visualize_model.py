@@ -9,7 +9,7 @@
 
 from pydrake.all import ModelVisualizer, StartMeshcat
 
-urdf_path = "./models/urdf/harpy_planar_half.urdf"
+urdf_path = "./models/urdf/harpy_planar.urdf"
 
 meshcat = StartMeshcat()
 visualizer = ModelVisualizer(meshcat=meshcat)

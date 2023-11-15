@@ -12,9 +12,11 @@ import webbrowser
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
 
+from info_logging import InfoLogger
+
 # Simulation parameters
-sim_time = 1.5       # seconds
-realtime_rate = 0.1    # speed of simulation relative to real time
+sim_time = .85        # seconds
+realtime_rate = 1    # speed of simulation relative to real time
 plot_state = False   # plot the state data
 
 model_file = "./models/urdf/harpy_planar.urdf"
@@ -58,6 +60,9 @@ plant.AddDistanceConstraint(
     plant.GetBodyByName("BallTarsusRight"), [0, 0, 0],
     plant.GetBodyByName("BallFemurRight"), [0, 0, 0],
     0.32)
+
+# Add data logger for generic info
+info_sys = builder.AddSystem(InfoLogger())
 
 # Disable gravity (for debugging)
 plant.gravity_field().set_gravity_vector([0, 0, -9.81])
@@ -131,8 +136,17 @@ builder.Connect(
         controller.GetOutputPort("thrust"),
         thruster_demux.get_input_port())
 
+# Add the info logger
+builder.Connect(plant.get_state_output_port(),
+        	    info_sys.GetInputPort("state"))
+
 # logger for state data
-logger = LogVectorOutput(plant.get_state_output_port(), builder)
+state_logger = LogVectorOutput(plant.get_state_output_port(), builder)
+com_logger = LogVectorOutput(info_sys.GetOutputPort("com_state"), builder)
+mom_logger = LogVectorOutput(info_sys.GetOutputPort("momentum"), builder)
+base_logger = LogVectorOutput(info_sys.GetOutputPort("base_pos"), builder)
+right_foot_logger = LogVectorOutput(info_sys.GetOutputPort("right_foot_pos"), builder)
+left_foot_logger = LogVectorOutput(info_sys.GetOutputPort("left_foot_pos"), builder)
 
 AddDefaultVisualization(builder, meshcat)
 diagram = builder.Build()
@@ -164,88 +178,37 @@ webbrowser.open("http://localhost:7000")
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
 
-# plot the state data
-if plot_state:
-	# get the state log
-	state_log = logger.FindLog(diagram_context)
-	time = state_log.sample_times()
-	data = state_log.data().transpose()
+# retrieve all the data
+state_data = state_logger.FindLog(diagram_context)
+com_data = com_logger.FindLog(diagram_context)
+mom_data = mom_logger.FindLog(diagram_context)
+base_data = base_logger.FindLog(diagram_context)
+right_foot_data = right_foot_logger.FindLog(diagram_context)
+left_foot_data = left_foot_logger.FindLog(diagram_context)
 
-	# Parse the state data
-	pos_base = data[:, 0:2]
-	ang_base = data[:, 2]
-	pos_thruster = data[:, 3:5]
-	pos_right_leg = data[:, 5:9]
-	pos_left_leg = data[:, 9:13]
+time = state_data.sample_times()
+state = state_data.data().transpose()
+com = com_data.data().transpose()
+mom = mom_data.data().transpose()
+base = base_data.data().transpose(),
+right = right_foot_data.data().transpose()
+left = left_foot_data.data().transpose()
 
-	vel_base = data[:, 13:15]
-	ang_vel_base = data[:, 15]
-	vel_thruster = data[:, 16:18]
-	vel_right_leg = data[:, 18:22]
-	vel_left_leg = data[:, 22:26]
+data_len = len(np.array(time).flatten())
 
-	# Create a figure with subplots
-	fig, axs = plt.subplots(5, 2, sharex=True)
+# save the data
+time = np.array(time).reshape((data_len, 1))
+state = np.array(state).reshape((data_len, 26))
+com = np.array(com).reshape((data_len, 6))
+mom = np.array(mom).reshape((data_len, 6))
+base = np.array(base).reshape((data_len, 3))
+right = np.array(right).reshape((data_len, 3))
+left = np.array(left).reshape((data_len, 3))
 
-	# Base Position
-	axs[0, 0].plot(time, pos_base)
-	axs[0, 0].set_ylabel("Position [m]")
-	axs[0, 0].legend(["x", "z"])
-	axs[0, 0].set_title("Base Pos")
-	axs[0, 0].grid(True)
-	axs[0, 1].plot(time, vel_base)
-	axs[0, 1].set_ylabel("Velocity [m/s]")
-	axs[0, 1].legend(["x", "z"])
-	axs[0, 1].set_title("Base Vel")
-	axs[0, 1].grid(True)
-
-	# Base Orientation
-	axs[1, 0].plot(time, ang_base)
-	axs[1, 0].set_ylabel("Orientation [rad]")
-	axs[1, 0].set_title("Base Pitch Pos")
-	axs[1, 0].grid(True)
-	axs[1, 1].plot(time, ang_vel_base)
-	axs[1, 1].set_ylabel("Angular Velocity [rad/s]")
-	axs[1, 1].set_title("Base Pitch Vel")
-	axs[1, 1].grid(True)
-
-	# Thruster Orientation
-	axs[2, 0].plot(time, pos_thruster)
-	axs[2, 0].set_ylabel("Position [rad]")
-	axs[2, 0].legend(["R", "L"])
-	axs[2, 0].set_title("Thruster Pos")
-	axs[2, 0].grid(True)
-	axs[2, 1].plot(time, vel_thruster)
-	axs[2, 1].set_ylabel("Velocity [rad/s]")
-	axs[2, 1].legend(["R", "L"])
-	axs[2, 1].set_title("Thruster Vel")
-	axs[2, 1].grid(True)
-
-	# Right Leg orietnation
-	axs[3, 0].plot(time, pos_right_leg)
-	axs[3, 0].set_ylabel("Position [rad]")
-	axs[3, 0].legend(["q1", "q2", "q3", "q4"])
-	axs[3, 0].set_title("Right Leg Pos")
-	axs[3, 0].grid(True)
-	axs[3, 1].plot(time, vel_right_leg)
-	axs[3, 1].set_ylabel("Velocity [rad/s]")
-	axs[3, 1].legend(["q1", "q2", "q3", "q4"])
-	axs[3, 1].set_title("Right Leg Vel")
-	axs[3, 1].grid(True)
-
-	# Left leg orientation
-	axs[4, 0].plot(time, pos_left_leg)
-	axs[4, 0].set_xlabel("Time [s]")
-	axs[4, 0].set_ylabel("Position [rad]")
-	axs[4, 0].legend(["q1", "q2", "q3", "q4"])
-	axs[4, 0].set_title("Left Leg Pos")
-	axs[4, 0].grid(True)
-	axs[4, 1].plot(time, vel_left_leg)
-	axs[4, 1].set_xlabel("Time [s]")
-	axs[4, 1].set_ylabel("Velocity [rad/s]")
-	axs[4, 1].legend(["q1", "q2", "q3", "q4"])
-	axs[4, 1].set_title("Left Leg Vel")
-	axs[4, 1].grid(True)
-
-	# Show the plot
-	plt.show()
+np.savetxt("data/time.txt", time)
+np.savetxt("data/state.txt", state)
+np.savetxt("data/com.txt", com)
+np.savetxt("data/mom.txt", mom)
+np.savetxt("data/base.txt", base)
+np.savetxt("data/right.txt", right)
+np.savetxt("data/left.txt", left)

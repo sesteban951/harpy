@@ -73,6 +73,7 @@ class PlanarRaibertController(LeafSystem):
                     calc=lambda context, output: output.set_value(
                         self.CalcOutput(context))))
         
+        # define output ports for control
         self.DeclareVectorOutputPort(
                 "tau_ff",
                 BasicVector(6),  # 2 DoF per leg, plus thruster angle
@@ -155,10 +156,10 @@ class PlanarRaibertController(LeafSystem):
                 self.plant.world_frame(), p_right_lb, p_right_ub)
 
         # # Add base frame posture constraint
-        # tol_angle = 0.0
-        # ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(),
-        #                             self.plant.world_frame(), RotationMatrix(),
-        #                             tol_angle)
+        tol_angle = 0.0
+        ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(),
+                                    self.plant.world_frame(), RotationMatrix(),
+                                    tol_angle)
 
         # Add distance constraints for the 4-bar linkages
         ik.AddPointToPointDistanceConstraint(
@@ -196,17 +197,17 @@ class PlanarRaibertController(LeafSystem):
         left_pos = self.plant.CalcPointsPositions(self.plant_context, self.left_foot_frame,
                                                             [0, 0, 0], self.plant.world_frame())
 
-        print(50*"*")
-        print("step_count: ", step_count)
-        print("time: ", time)
-        # print("Swing Foot: {}".format(self.swing_foot_frame.name()))
-        # print("Stance Foot: {}".format(self.stance_foot_frame.name()))
-        print("Right Pos: {}".format(right_pos.T))
-        print("Left Pos: {}".format(left_pos.T))
-        # print("p_com: {}".format(self.p_com.T))
-        # print("v_com: {}".format(self.v_com.T))
-        # print("u0: {}".format(u0.T))
-        # print("uf: {}".format(uf.T))
+        # print(50*"*")
+        # print("step_count: ", step_count)
+        # print("time: ", time)
+        # # print("Swing Foot: {}".format(self.swing_foot_frame.name()))
+        # # print("Stance Foot: {}".format(self.stance_foot_frame.name()))
+        # print("Right Pos: {}".format(right_pos.T))
+        # print("Left Pos: {}".format(left_pos.T))
+        # # print("p_com: {}".format(self.p_com.T))
+        # # print("v_com: {}".format(self.v_com.T))
+        # # print("u0: {}".format(u0.T))
+        # # print("uf: {}".format(uf.T))
 
         # compute bezier curve control points, 7-pt5-pt bezier
         n = 7
@@ -230,15 +231,15 @@ class PlanarRaibertController(LeafSystem):
         if step_count % 2 == 0:
             p_right = b_st
             p_left = b_sw
-            print("b left foot in swing")
+            # print("b left foot in swing")
         # right foot in swing
         else:
             p_right = b_sw
             p_left = b_st
-            print("b right foot in swing")
+            # print("b right foot in swing")
         
-        print("p_left_target: {}".format(p_left.T))
-        print("p_right_target: {}".format(p_right.T))
+        # print("p_left_target: {}".format(p_left.T))
+        # print("p_right_target: {}".format(p_right.T))
         
         return p_right, p_left
     
@@ -297,7 +298,7 @@ class PlanarRaibertController(LeafSystem):
         x_hat = self.EvalVectorInput(context, 0).get_value()
         self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
         self.t_current = context.get_time()
-
+        
         # update the CoM position and velocity values, stance and swing foot, LIP states
         self.update_CoM_state()
         self.update_LIP_state()

@@ -34,7 +34,7 @@
     <link name="ThrusterRight">
         <inertial>
             <origin rpy="0 0 0" xyz="-1.0844e-09 -0.049128 -0.0051344"/>
-            <mass value="0.9r"/>
+            <mass value="0.9"/>
             <inertia ixx="0.00032298" ixy="1.5939e-11" ixz="-4.6573e-11" iyy="0.00030947" iyz="-1.6116e-06" izz="0.00028441"/>   
         </inertial>
         <visual>
