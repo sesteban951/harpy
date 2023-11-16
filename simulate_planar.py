@@ -15,8 +15,8 @@ from planar_controller import PlanarRaibertController
 from info_logging import InfoLogger
 
 # Simulation parameters
-sim_time = .85        # seconds
-realtime_rate = 1    # speed of simulation relative to real time
+sim_time = 1.5        # seconds
+realtime_rate = .1    # speed of simulation relative to real time
 plot_state = False   # plot the state data
 
 model_file = "./models/urdf/harpy_planar.urdf"
@@ -76,7 +76,7 @@ plant.gravity_field().set_gravity_vector([0, 0, -9.81])
 #
 # This is a rough imitation of a low-level motor control strategy that might
 # run on the hardware.
-Kp = 250 * np.ones(plant.num_actuators())
+Kp = 350 * np.ones(plant.num_actuators())
 Kd = 50 * np.ones(plant.num_actuators())
 actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
@@ -159,7 +159,7 @@ q0 = np.array([0, 0.514,     # base position (514 mm default height)
                0, 0,         # thrusters
                0, 0, 0, 0,   # right leg
                0, 0, 0, 0])  # left leg
-v0 = np.array([-.09,0,          # base velocity
+v0 = np.array([-.1,0,          # base velocity
                0,            # base angular velocity
                0,0,          # thrusters angular velocity
                0,0,0,0,      # right leg joint angular velocity

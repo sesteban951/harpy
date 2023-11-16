@@ -57,6 +57,7 @@ class PlanarRaibertController(LeafSystem):
         self.stance_foot_frame = None
         self.swing_foot_frame = None
         self.swing_foot_last_gnd_pos = None
+        self.stance_foot_last_gnd_pos = None
 
         # Store center of mass variables for CoM position and velocity wrt world (for LIP)
         self.p_com = None
@@ -96,25 +97,11 @@ class PlanarRaibertController(LeafSystem):
                 prerequisites_of_calc={self._cache.ticket()})
 
         # Linear Inverted Pendulum trajectory generation
-        g  = 9.81                        # gravity [m/s^2]
-        self.z0 = 0.5                         # const CoM height [m]
-        self.z_apex = 0.25               # apex height [m]
-        self.T = 0.3                     # step period [s]
-        self.alpha = 0.28                     # raibert controller parameters
-        self.beta = 1                         # raibert controller parameters
-        N = 1                            # number of steps
-        x0 = np.array([0.01,0.01])       # initial state [m, m/s]
-        dt = 0.01                        # time step [s]
+        self.z0 = 0.45                   # const CoM height [m]
+        self.z_apex = 0.20               # apex height [m]
+        self.T = 0.33                     # step period [s]
 
-        # Linear Inverted Pendulum trajectory generation
-        # LIP = LinearInvertedPendulum(N,x0)
-        # LIP.set_physical_params(g,self.z0)
-        # LIP.set_walking_params(self.z_apex,self.T)
-        # LIP.set_raibert_params(self.alpha,self.beta)
-        # LIP.set_traj_settings(N,dt,x0)
-        # self.t, self.x, self.b = LIP.make_trajectories()
-
-    def DoInverseKinematics(self, p_right, p_left, p_torso, epsilon=1e-3):
+    def DoInverseKinematics(self, p_right, p_left, p_torso, r_torso, epsilon=1e-3):
         """
         Solve an inverse kinematics problem, reporting joint angles that will
         correspond to the desired positions of the feet and torso in the world.
@@ -129,37 +116,38 @@ class PlanarRaibertController(LeafSystem):
             q: Joint angles that set the feet and torso where we want them
         """
         # TODO(vincekurtz): consider allocating this in the constructor and just
-        # updating the constraints when this method is called
-        ik = InverseKinematics(self.plant)
-
-        # set tolerance vector for postions
-        tol = np.array([[epsilon], [np.inf], [epsilon]])
-
         # Fix the torso frame in the world
         # TODO(vincekurtz): consider using the joint locking API for the
         # floating base instead
-        # p_torso_lb = p_torso - tol
-        # p_torso_ub = p_torso + tol
-        p_torso_lb = p_torso - np.array([[np.inf], [np.inf], [epsilon]])
-        p_torso_ub = p_torso + np.array([[np.inf], [np.inf], [epsilon]])
+        
+        # instantiate inverse kinematics solver
+        ik = InverseKinematics(self.plant)
+
+        # set tolerance vectors for postions and orientations
+        tol_xz = np.array([[epsilon], [np.inf], [epsilon]])
+        tol_z  = np.array([[np.inf], [np.inf], [epsilon]])
+        tol_th = 0.01
+
+        # Torso position constraint
+        p_torso_lb = p_torso - tol_z
+        p_torso_ub = p_torso + tol_z
         ik.AddPositionConstraint(self.torso_frame, [0, 0, 0],
                 self.plant.world_frame(), p_torso_lb, p_torso_ub)
+        
+        # Torso orientation constraint
+        ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(),
+                                    self.plant.world_frame(), RotationMatrix(),
+                                    tol_th)
 
         # Constrain the positions of the feet with bounding boxes
-        p_left_lb = p_left - tol
-        p_left_ub = p_left + tol
-        p_right_lb = p_right - tol
-        p_right_ub = p_right + tol
+        p_left_lb = p_left - tol_xz
+        p_left_ub = p_left + tol_xz
+        p_right_lb = p_right - tol_xz
+        p_right_ub = p_right + tol_xz
         ik.AddPositionConstraint(self.left_foot_frame, [0, 0, 0],
                 self.plant.world_frame(), p_left_lb, p_left_ub)
         ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
                 self.plant.world_frame(), p_right_lb, p_right_ub)
-
-        # # Add base frame posture constraint
-        tol_angle = 0.0
-        ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(),
-                                    self.plant.world_frame(), RotationMatrix(),
-                                    tol_angle)
 
         # Add distance constraints for the 4-bar linkages
         ik.AddPointToPointDistanceConstraint(
@@ -175,47 +163,62 @@ class PlanarRaibertController(LeafSystem):
         
         return res.GetSolution(ik.q())
 
-    # Compute foot placement location
+    # Compute foot placement location, with respect to stance foot
     def foot_placement(self):
+        
+        # HLIP state parameters
+        p = self.p[0][0]
+        v = self.v[0]
 
-        u = 1.0*self.v[0] - 0*self.p[0]
-        return u[0]
+        # HLIP parameters
+        u_des = 0.0                        # P1 orbit step size desired
+        x = np.array([[p], [v]])           # HLIP state
+        x_des = np.array([[0.0], [0.0]])   # HLIP state desired
+        K = np.array([1.0, 1.0])           # feedback gain
+
+        # u = u_des + K @ (x - x_des)            # compute step size
+        u = 0.5*v  + self.swing_foot_last_gnd_pos[0][0] # compute step size
+
+        return u
 
     # Query desired foot position from B-slpine trajectory
     def foot_bezier(self):
+
         # compute step count and swing foot time
         step_count = np.floor(self.t_current/self.T)
         time = self.t_current % self.T
         
         # bezier curve offsets
-        z_offset = -0.03  # z-offset for foot 
-        u0 = self.swing_foot_last_gnd_pos[0][0]  # x-direction foot placement
-        uf = self.foot_placement()
-
+        z_offset = -0.0                          # z-offset for foot 
+        z0 = 0.0                                 # inital swing foot height
+        zf = -0.01                               # final swing foot height (neg to ensure foot strike)
+        u0 = self.stance_foot_last_gnd_pos[0][0]  # initial swing foot position
+        uf = u0 + self.foot_placement()               # final swing foot position
+    
         right_pos = self.plant.CalcPointsPositions(self.plant_context, self.right_foot_frame,
                                                             [0, 0, 0], self.plant.world_frame())
         left_pos = self.plant.CalcPointsPositions(self.plant_context, self.left_foot_frame,
                                                             [0, 0, 0], self.plant.world_frame())
 
-        # print(50*"*")
-        # print("step_count: ", step_count)
-        # print("time: ", time)
-        # # print("Swing Foot: {}".format(self.swing_foot_frame.name()))
+        print(50*"*")
+        print("step_count: ", step_count)
+        print("time: ", time)
+        print("Swing Foot: {}".format(self.swing_foot_frame.name()))
         # # print("Stance Foot: {}".format(self.stance_foot_frame.name()))
-        # print("Right Pos: {}".format(right_pos.T))
-        # print("Left Pos: {}".format(left_pos.T))
-        # # print("p_com: {}".format(self.p_com.T))
-        # # print("v_com: {}".format(self.v_com.T))
-        # # print("u0: {}".format(u0.T))
-        # # print("uf: {}".format(uf.T))
+        print("Right Pos: {}".format(right_pos.T))
+        print("Left Pos: {}".format(left_pos.T))
+        # print("p_com: {}".format(self.p_com.T))
+        # print("v_com: {}".format(self.v_com.T))
+        # print("u0: {}".format(u0.T))
+        # print("uf: {}".format(uf.T))
 
-        # compute bezier curve control points, 7-pt5-pt bezier
-        n = 7
+        # compute bezier curve control points, 7-pt or 5-pt bezier
+        n = 5
         if n == 7:
-            ctrl_pts_z = np.array([[0],[0],[0],[(16/5)*self.z_apex],[0],[0],[0]]) + z_offset
+            ctrl_pts_z = np.array([[z0],[z0],[z0],[(16/5)*self.z_apex],[zf],[zf],[zf]]) + z_offset
             ctrl_pts_x = np.array([[u0],[u0],[u0],[(u0+uf)/2],[uf],[uf],[uf]])
         elif n == 5:
-            ctrl_pts_z = np.array([[0],[0],[(8/3)*self.z_apex],[0],[0]]) + z_offset
+            ctrl_pts_z = np.array([[z0],[z0],[(8/3)*self.z_apex],[zf],[zf]]) + z_offset
             ctrl_pts_x = np.array([[u0],[u0],[(u0+uf)/2],[uf],[uf]])
         ctrl_pts = np.vstack((ctrl_pts_x.T,ctrl_pts_z.T))
 
@@ -224,23 +227,22 @@ class PlanarRaibertController(LeafSystem):
         b = np.array(bezier.value(time))       
         
         # choose which foot to move, one in stance and one in swing
-        b_sw = np.array([b.T[0][0], 0.0, b.T[0][1]])[None].T
-        b_st = np.array([self.swing_foot_last_gnd_pos[0][0], 0.0, z_offset])[None].T
+        swing_target = np.array([b.T[0][0], 0.0, b.T[0][1]])[None].T
+        stance_target = np.array([self.swing_foot_last_gnd_pos[0][0], 0.0, z_offset])[None].T
         
         # left foot in swing
         if step_count % 2 == 0:
-            p_right = b_st
-            p_left = b_sw
-            # print("b left foot in swing")
+            p_right = stance_target
+            p_left = swing_target
         # right foot in swing
         else:
-            p_right = b_sw
-            p_left = b_st
+            p_right = swing_target
+            p_left = stance_target
             # print("b right foot in swing")
-        
-        # print("p_left_target: {}".format(p_left.T))
-        # print("p_right_target: {}".format(p_right.T))
-        
+
+        print("Right Foot Target", p_right.T)
+        print("Left Foot Target", p_left.T)
+
         return p_right, p_left
     
     # update stance and swing foot variables
@@ -253,11 +255,15 @@ class PlanarRaibertController(LeafSystem):
         if step_count % 2 == 0: 
             self.swing_foot_last_gnd_pos = self.plant.CalcPointsPositions(self.plant_context, self.right_foot_frame,
                                                                       [0, 0, 0], self.plant.world_frame())
+            self.stance_foot_last_gnd_pos = self.plant.CalcPointsPositions(self.plant_context, self.left_foot_frame,
+                                                                      [0, 0, 0], self.plant.world_frame())
             self.stance_foot_frame = self.right_foot_frame
             self.swing_foot_frame = self.left_foot_frame
         # right foot in swing
         else:               
             self.swing_foot_last_gnd_pos = self.plant.CalcPointsPositions(self.plant_context, self.left_foot_frame,
+                                                                      [0, 0, 0], self.plant.world_frame())
+            self.stance_foot_last_gnd_pos = self.plant.CalcPointsPositions(self.plant_context, self.right_foot_frame,
                                                                       [0, 0, 0], self.plant.world_frame())
             self.stance_foot_frame = self.left_foot_frame
             self.swing_foot_frame = self.right_foot_frame
@@ -303,16 +309,20 @@ class PlanarRaibertController(LeafSystem):
         self.update_CoM_state()
         self.update_LIP_state()
 
-        # Query the position of the torso and the feet in the world frame
+        # Compute target base position. (fix orientation and height)
         p_torso = self.plant.CalcPointsPositions(
                 self.plant_context, self.torso_frame,
                 [0, 0, 0], self.plant.world_frame())
+        torso_pos_target = np.array([[p_torso[0][0]], [p_torso[1][0]], [self.z0]])
+        torso_rpy_target = RotationMatrix()
 
-        # Do some inverse kinematics to find joint angles that set a new foot position
-        p_right_target, p_left_target = self.foot_bezier()
-        # p_torso_target = p_torso
-        p_torso_target = np.array([[p_torso[0][0]], [p_torso[1][0]], [self.z0]])
-        q_ik = self.DoInverseKinematics(p_right_target, p_left_target, p_torso_target, epsilon=1e-5)
+        # Compute target foot positions. (fixed stance and swinging foot)
+        right_pos_target, left_pos_target = self.foot_bezier()
+
+        # find desired configuration coordinates to track LIP
+        q_ik = self.DoInverseKinematics(right_pos_target, left_pos_target, 
+                                        torso_pos_target, torso_rpy_target,
+                                        epsilon=1e-3)
         
         # Map generalized positions from IK to actuated joint angles
         q_nom = np.array([

@@ -1,7 +1,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Plotting Harpy Data
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-clear all; clc;
+clear all; close all; clc;
 
 % Import Data
 time = importdata("time.txt");
@@ -32,9 +32,9 @@ xlabel("x [m]"); ylabel("z [m]")
 xline(0); yline(0);
 grid on; axis equal;
 subplot(2,1,2)
-plot(base(:,1),base(:,3),'b')
-title("Base Position")
-xlabel("x [m]"); ylabel("z [m]")
+plot(com(:,4),com(:,6),'b')
+title("Center of Mass Velocity")
+xlabel("xdot [m/s]"); ylabel("zdot [m/s]")
 xline(0); yline(0);
 grid on; axis equal;
 
