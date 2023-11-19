@@ -3,9 +3,6 @@ from pydrake.all import *
 import numpy as np
 import sys 
 
-sys.path.append('./ROM/')
-from LinearInvertedPendulum import LinearInvertedPendulum
-
 class PlanarRaibertController(LeafSystem):
     """
     A simple controller for the planar harpy robot based on the Raibert
@@ -96,10 +93,10 @@ class PlanarRaibertController(LeafSystem):
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
 
-        # Linear Inverted Pendulum trajectory generation
+        # Linear Inverted Pendulum parameters
         self.z0 = 0.5                   # const CoM height [m]
         self.z_apex = 0.2               # apex height [m]
-        self.T = 0.25                     # step period [s]
+        self.T = 0.25                   # step period [s]
 
     def DoInverseKinematics(self, p_right, p_left, p_torso, r_torso):
         """
@@ -110,15 +107,10 @@ class PlanarRaibertController(LeafSystem):
             p_left: desired position of the left foot in the world frame
             p_right: desired position of the right foot in the world frame
             p_base: desired position of the torso in the world frame
-
+            r_torso: desired orientation of the torso in the world frame
         Returns:
             q: Joint angles that set the feet and torso where we want them
         """
-        # TODO(vincekurtz): consider allocating this in the constructor and just
-        # Fix the torso frame in the world
-        # TODO(vincekurtz): consider using the joint locking API for the
-        # floating base instead
-        
         # instantiate inverse kinematics solver
         ik = InverseKinematics(self.plant)
 
@@ -166,7 +158,9 @@ class PlanarRaibertController(LeafSystem):
 
     # Compute foot placement location, with respect to stance foot
     def foot_placement(self):
-        
+        """
+        Updates foot placement location
+        """     
         # HLIP state parameters
         p = self.p[0][0]
         v = self.v[0]
@@ -177,14 +171,15 @@ class PlanarRaibertController(LeafSystem):
         x_des = np.array([[0.0], [0.0]])   # HLIP state desired
         K = np.array([.5, 0.5])           # feedback gain
     
-        # u = (u_des + np.dot(K,(x - x_des)))[0]            # compute step size
-        # u = .4*v  + self.swing_foot_last_gnd_pos[0][0] # compute step size
         u = 0.6*v 
         return u
 
     # Query desired foot position from B-slpine trajectory
     def foot_bezier(self):
-
+        """
+        Updates right adn left foot desired positions.
+        Uses a 7-pt or 5-pt bezier curve to generate a trajectory for the swing foot.
+        """
         # compute step count and swing foot time
         step_count = np.floor(self.t_current/self.T)
         time = self.t_current % self.T
@@ -196,11 +191,6 @@ class PlanarRaibertController(LeafSystem):
         u0 = self.stance_foot_last_gnd_pos[0][0]  # initial swing foot position
         uf = u0 + self.foot_placement()               # final swing foot position
     
-        right_pos = self.plant.CalcPointsPositions(self.plant_context, self.right_foot_frame,
-                                                            [0, 0, 0], self.plant.world_frame())
-        left_pos = self.plant.CalcPointsPositions(self.plant_context, self.left_foot_frame,
-                                                            [0, 0, 0], self.plant.world_frame())
-
         # compute bezier curve control points, 7-pt or 5-pt bezier
         n = 7
         if n == 7:
@@ -209,6 +199,8 @@ class PlanarRaibertController(LeafSystem):
         elif n == 5:
             ctrl_pts_z = np.array([[z0],[z0],[(8/3)*self.z_apex],[zf],[zf]]) + z_offset
             ctrl_pts_x = np.array([[u0],[u0],[(u0+uf)/2],[uf],[uf]])
+        else:
+            print("Invalid number of control points")
         ctrl_pts = np.vstack((ctrl_pts_x.T,ctrl_pts_z.T))
 
         # evaluate bezier at time t
@@ -227,12 +219,15 @@ class PlanarRaibertController(LeafSystem):
         else:
             p_right = swing_target
             p_left = stance_target
-            # print("b right foot in swing")
 
         return p_right, p_left
     
     # update stance and swing foot variables
     def update_LIP_state(self):
+        """
+        Updates the LIP model state. 
+        x = [p_com - p_stance, v_com]
+        """
         # compute step count and swing foot time
         step_count = np.floor(self.t_current/self.T)
 
@@ -261,7 +256,9 @@ class PlanarRaibertController(LeafSystem):
 
     # Estimate CoM position and velocity wrt to world frame
     def update_CoM_state(self):
-        
+        """
+        Updates the robot's center of mass position and velocity wrt world frame.
+        """
         # compute p_com
         p_com = self.plant.CalcCenterOfMassPositionInWorld(self.plant_context)
 
@@ -310,6 +307,7 @@ class PlanarRaibertController(LeafSystem):
                                         torso_pos_target, torso_rpy_target)
         
         # Map generalized positions from IK to actuated joint angles
+        # TODO: We should probably give the controller velocity info to prevent jerkiness
         q_nom = np.array([
             q_ik[3], q_ik[4],    # thrusters
             q_ik[5], q_ik[9],    # hip

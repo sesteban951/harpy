@@ -7,8 +7,6 @@
 ##
 
 import numpy as np
-import matplotlib.pyplot as plt
-import webbrowser
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
 
@@ -174,11 +172,10 @@ simulator.Initialize()
 
 # Run the sim
 meshcat.StartRecording()
-webbrowser.open("http://localhost:7000")
 simulator.AdvanceTo(sim_time)
 meshcat.PublishRecording()
 
-# retrieve all the data
+# Retrieve all the data from the loggers
 state_data = state_logger.FindLog(diagram_context)
 com_data = com_logger.FindLog(diagram_context)
 mom_data = mom_logger.FindLog(diagram_context)
@@ -196,7 +193,7 @@ left = left_foot_data.data().transpose()
 
 data_len = len(np.array(time).flatten())
 
-# save the data
+# Save all data to text files in data folder
 time = np.array(time).reshape((data_len, 1))
 state = np.array(state).reshape((data_len, 26))
 com = np.array(com).reshape((data_len, 6))
