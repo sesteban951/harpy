@@ -8,11 +8,11 @@
 
 import numpy as np
 from pydrake.all import *
-from controller import TemplateController
+from controller import Controller
 
 # Simulation parameters
-sim_time = 10.0  # seconds
-realtime_rate = 1
+sim_time = 5.0  # seconds
+realtime_rate = 0
 
 model_file = "./models/urdf/harpy.urdf"
 
@@ -31,11 +31,11 @@ plant, scene_graph = AddMultibodyPlant(config, builder)
 # Add a flat ground with friction
 ground_props = ProximityProperties()
 AddContactMaterial(
-        friction=CoulombFriction(static_friction=0.5, dynamic_friction=0.5),
-        dissipation=1.25,
+        friction=CoulombFriction(static_friction=1.0, dynamic_friction=0.7),
+        dissipation=0,
         properties=ground_props)
 AddCompliantHydroelasticPropertiesForHalfSpace(
-        slab_thickness=1.0,
+        slab_thickness=0.1,
         hydroelastic_modulus=1e7,
         properties=ground_props)
 plant.RegisterCollisionGeometry(
@@ -65,8 +65,8 @@ plant.AddDistanceConstraint(
 #
 # This is a rough imitation of a low-level motor control strategy that might
 # run on the hardware.
-Kp = 50 * np.ones(plant.num_actuators())
-Kd = 5 * np.ones(plant.num_actuators())
+Kp = 250 * np.ones(plant.num_actuators())
+Kd = 50  * np.ones(plant.num_actuators())
 actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
     plant.get_joint_actuator(actuator_index).set_controller_gains(
@@ -111,7 +111,7 @@ builder.Connect(
 
 # Add the controller
 controller = builder.AddSystem(
-        TemplateController())
+        Controller())
 builder.Connect(
         plant.get_state_output_port(),
         controller.GetInputPort("x_hat"))
@@ -130,13 +130,20 @@ diagram = builder.Build()
 diagram_context = diagram.CreateDefaultContext()
 plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
 
-# Set the initial condition
-q0 = np.array([1, 0, 0, 0,      # base orientation
-               0, 0, 0.51,      # base position
-               0, 0,            # thrusters
-               0, 0, 0, 0, 0,   # right leg
-               0, 0, 0, 0, 0])  # left leg
+# Set the initial position about world coordiante sys. 
+q0 = np.array([1, 0, 0, 0,     # Base Orient: qw, qx, qy, qz, [quat]
+               0, 0, 0.514,    # Base Pos: x, y, z [m]
+               0, 0,           # Thruster: left, right [rad]
+               0, 0, 0, 0, 0,  # Right leg: hip_roll, hip_pitch, knee_pitch, tarsus_pitch, foot pitch [rad]
+               0, 0, 0, 0, 0]) # Left leg: hip_roll, hip_pitch, knee_pitch, tarsus_pitch, foot pitch [rad]
+# Set the initial velocity about world coordiante sys. 
+v0 = np.array([0, 0, 0,        # Base Angl Vel: wx, wy, wz [rad/s]
+               0, 0, 0,        # Base Lin Vel: vx, vy, vz [m/s]
+               0, 0,           # Thruster Angl Vel: left, right [rad/s]
+               0, 0, 0, 0, 0,  # Left leg Ang Vel: hip_roll, hip_pitch, knee_pitch, tarsus_pitch, foot pitch [rad/s]
+               0, 0, 0, 0, 0]) # Right leg Ang Vel: hip_roll, hip_pitch, knee_pitch, tarsus_pitch, foot pitch [rad/s]
 plant.SetPositions(plant_context, q0)
+plant.SetVelocities(plant_context, v0)
 
 # Initialize the sim
 simulator = Simulator(diagram, diagram_context)

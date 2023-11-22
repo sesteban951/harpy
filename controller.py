@@ -1,6 +1,7 @@
 from pydrake.all import *
+import numpy as np
 
-class TemplateController(LeafSystem):
+class Controller(LeafSystem):
     """
     A simple example of a Drake control system for the Harpy robot. 
 
@@ -23,19 +24,22 @@ class TemplateController(LeafSystem):
         tau = tau_ff + Kp * (q - q_nom) + Kd * (v - v_nom)
     """
     def __init__(self):
+        
+        # init parent class
         LeafSystem.__init__(self)
 
-        # Here is where you might want to create an internal MultibodyPlant
-        # model of the robot for the controller to use, e.g.,
-        # self.plant = ...
-        # self.plant_context = ...
+        # create an internal system model for the controller
+        self.plant = MultibodyPlant(0)
+        Parser(self.plant).AddModels("./models/urdf/harpy.urdf")
+        self.plant.Finalize()
+        self.plant_context = self.plant.CreateDefaultContext()
 
+        # set input ports
         self.input_port = self.DeclareVectorInputPort(
                 "x_hat",
                 BasicVector(19 + 18))  # 19 positions, 18 velocities
 
-        # We'll do some fancy caching stuff so that both outputs can be
-        # computed with the same method.
+        # Fancy caching stuff so that both outputs can be computed with the same method.
         self._cache = self.DeclareCacheEntry(
                 description="controller output cache",
                 value_producer=ValueProducer(
@@ -43,9 +47,10 @@ class TemplateController(LeafSystem):
                     calc=lambda context, output: output.set_value(
                         self.CalcOutput(context))))
         
+        # set output ports
         self.DeclareVectorOutputPort(
                 "tau_ff",
-                BasicVector(8),  # 3 DoF per leg, plus thruster angle
+                BasicVector(8),  # 3 DoF per leg, 2 thruster DoFs
                 lambda context, output: output.set_value(
                     self._cache.Eval(context)["tau_ff"]),
                 prerequisites_of_calc={self._cache.ticket()})
@@ -72,10 +77,9 @@ class TemplateController(LeafSystem):
         All the input port data is contained in 'context'. This method must
         return a dictionary with the keys "tau_ff" and "x_nom".
         """
+        # set latest sate to current internal robot state
         x_hat = self.EvalVectorInput(context, 0).get_value()
-        print(f"Base height: {x_hat[6]}")
-
-        # Amazing walking controller goes here!
+        self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
 
         # Feed-forward joint torques
         tau_ff = np.zeros(8)
