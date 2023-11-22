@@ -1,7 +1,6 @@
 from pydrake.all import *
 
 import numpy as np
-import sys 
 
 class PlanarRaibertController(LeafSystem):
     """

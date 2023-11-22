@@ -316,7 +316,7 @@
     <joint name="Torso_ThrusterLeft" type="continuous">
         <parent link="Torso"/>
         <child link="ThrusterLeft"/>
-        <axis xyz="0 1 0"/>
+        <axis xyz="0 -1 0"/>
         <origin xyz="-0.028 0.2 0.16" rpy="0.0 0.0 3.1416"/>
     </joint>
     
