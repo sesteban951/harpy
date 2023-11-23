@@ -13,9 +13,8 @@ from planar_controller import PlanarRaibertController
 from info_logging import InfoLogger
 
 # Simulation parameters
-sim_time = 15.0        # seconds
+sim_time = 10.0      # seconds
 realtime_rate = 0    # speed of simulation relative to real time
-plot_state = False   # plot the state data
 
 model_file = "./models/urdf/harpy_planar.urdf"
 

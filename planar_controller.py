@@ -34,33 +34,11 @@ class PlanarRaibertController(LeafSystem):
         self.plant.Finalize()
         self.plant_context = self.plant.CreateDefaultContext()
 
+        # set the input port
         self.input_port = self.DeclareVectorInputPort(
                 "x_hat",
                 BasicVector(13 + 13))  # 13 positions and velocities
-
-        # Store some frames that we'll use in the future
-        self.torso_frame = self.plant.GetFrameByName("Torso")
-        self.left_foot_frame = self.plant.GetFrameByName("FootLeft")
-        self.right_foot_frame = self.plant.GetFrameByName("FootRight")
-
-        self.ball_tarsus_left_frame = self.plant.GetFrameByName("BallTarsusLeft")
-        self.ball_tarsus_right_frame = self.plant.GetFrameByName("BallTarsusRight")
-        self.ball_femur_left_frame = self.plant.GetFrameByName("BallFemurLeft")
-        self.ball_femur_right_frame = self.plant.GetFrameByName("BallFemurRight")
-
-        # store swing and stance foot variables
-        self.t_current = 0.0
-        self.stance_foot_frame = None
-        self.swing_foot_frame = None
-        self.swing_foot_last_gnd_pos = None
-        self.stance_foot_last_gnd_pos = None
-
-        # Store center of mass variables for CoM position and velocity wrt world (for LIP)
-        self.p_com = None
-        self.v_com = None
-        self.p = None
-        self.v = None
-
+        
         # We'll do some fancy caching stuff so that both outputs can be
         # computed with the same method.
         self._cache = self.DeclareCacheEntry(
@@ -92,12 +70,62 @@ class PlanarRaibertController(LeafSystem):
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
 
+        # Store some frames that we'll use in the future
+        self.torso_frame = self.plant.GetFrameByName("Torso")
+        self.left_foot_frame = self.plant.GetFrameByName("FootLeft")
+        self.right_foot_frame = self.plant.GetFrameByName("FootRight")
+
+        # store swing and stance foot variables
+        self.t_current = 0.0
+        self.stance_foot_frame = None
+        self.swing_foot_frame = None
+        self.swing_foot_last_gnd_pos = None
+        self.stance_foot_last_gnd_pos = None
+
+        # Store center of mass variables for CoM position and velocity wrt world (for LIP)
+        self.p_com = None
+        self.v_com = None
+        self.p = None
+        self.v = None
+
+        # instantiate inverse kinematics solver
+        self.ik = InverseKinematics(self.plant)
+
+        # inverse kinematics solver settings
+        self.epsilon_feet = 0.001   # foot position tolerance     [m]
+        self.epsilon_base = 0.01    # torso position tolerance    [m]
+        self.epsilon_orient = 0.1   # torso orientation tolerance [rad]
+        self.tol_feet = np.array([[self.epsilon_feet], [np.inf], [self.epsilon_feet]])
+        self.tol_base = np.array([[np.inf], [np.inf], [self.epsilon_base]])
+
+        # Add distance constraints to IK for the 4-bar linkages (fixed)
+        self.left_4link =  self.ik.AddPointToPointDistanceConstraint(self.plant.GetFrameByName("BallTarsusLeft"), [0, 0, 0],
+                                                                     self.plant.GetFrameByName("BallFemurLeft"), [0, 0, 0], 
+                                                                     0.32, 0.32)
+        self.right_4link = self.ik.AddPointToPointDistanceConstraint(self.plant.GetFrameByName("BallTarsusRight"), [0, 0, 0],
+                                                                     self.plant.GetFrameByName("BallFemurRight"), [0, 0, 0], 
+                                                                     0.32, 0.32)
+        # Add torso constraints
+        self.p_torso_cons = self.ik.AddPositionConstraint(self.torso_frame, [0, 0, 0],
+                                                          self.plant.world_frame(), 
+                                                          np.array([0,0,0]), np.array([0,0,0])) 
+        self.r_torso_cons = self.ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(),
+                                                             self.plant.world_frame(), RotationMatrix(),
+                                                             self.epsilon_orient)                                        
+        # Add foot constraints
+        self.p_left_cons =  self.ik.AddPositionConstraint(self.left_foot_frame, [0, 0, 0],
+                                                          self.plant.world_frame(), 
+                                                          np.array([0,0,0]), np.array([0,0,0]))
+        self.p_right_cons = self.ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
+                                                          self.plant.world_frame(), 
+                                                          np.array([0,0,0]), np.array([0,0,0]))
+
         # Linear Inverted Pendulum parameters
         self.z0 = 0.5                   # const CoM height [m]
         self.z_apex = 0.2               # apex height [m]
         self.T = 0.25                   # step period [s]
 
-    def DoInverseKinematics(self, p_right, p_left, p_torso, r_torso):
+    def DoInverseKinematics(self, p_right, p_left, p_torso):
         """
         Solve an inverse kinematics problem, reporting joint angles that will
         correspond to the desired positions of the feet and torso in the world.
@@ -106,54 +134,31 @@ class PlanarRaibertController(LeafSystem):
             p_left: desired position of the left foot in the world frame
             p_right: desired position of the right foot in the world frame
             p_base: desired position of the torso in the world frame
-            r_torso: desired orientation of the torso in the world frame
         Returns:
             q: Joint angles that set the feet and torso where we want them
         """
-        # instantiate inverse kinematics solver
-        ik = InverseKinematics(self.plant)
 
-        # set tolerance vectors for postions and orientations
-        epsilon_feet = 0.001
-        epsilon_base = 0.01
-        epsilon_orient = 0.1
-        tol_feet = np.array([[epsilon_feet], [np.inf], [epsilon_feet]])
-        tol_base = np.array([[np.inf], [np.inf], [epsilon_base]])
-
-        # Torso position constraint
-        p_torso_lb = p_torso - tol_base
-        p_torso_ub = p_torso + tol_base
-        ik.AddPositionConstraint(self.torso_frame, [0, 0, 0],
-                self.plant.world_frame(), p_torso_lb, p_torso_ub)
+        # Update constraint on torso position
+        p_torso_lb = p_torso - self.tol_base
+        p_torso_ub = p_torso + self.tol_base
+        self.p_torso_cons.evaluator().UpdateLowerBound(p_torso_lb)
+        self.p_torso_cons.evaluator().UpdateUpperBound(p_torso_ub)
         
-        # Torso orientation constraint
-        ik.AddOrientationConstraint(self.torso_frame, RotationMatrix(),
-                                    self.plant.world_frame(), RotationMatrix(),
-                                    epsilon_orient)
+        # Update constraints on the positions of the feet
+        p_left_lb = p_left - self.tol_feet
+        p_left_ub = p_left + self.tol_feet
+        p_right_lb = p_right - self.tol_feet
+        p_right_ub = p_right + self.tol_feet
+        self.p_left_cons.evaluator().UpdateLowerBound(p_left_lb)
+        self.p_left_cons.evaluator().UpdateUpperBound(p_left_ub)
+        self.p_right_cons.evaluator().UpdateLowerBound(p_right_lb)
+        self.p_right_cons.evaluator().UpdateUpperBound(p_right_ub)
 
-        # Constrain the positions of the feet with bounding boxes
-        p_left_lb = p_left - tol_feet
-        p_left_ub = p_left + tol_feet
-        p_right_lb = p_right - tol_feet
-        p_right_ub = p_right + tol_feet
-        ik.AddPositionConstraint(self.left_foot_frame, [0, 0, 0],
-                self.plant.world_frame(), p_left_lb, p_left_ub)
-        ik.AddPositionConstraint(self.right_foot_frame, [0, 0, 0],
-                self.plant.world_frame(), p_right_lb, p_right_ub)
-
-        # Add distance constraints for the 4-bar linkages
-        ik.AddPointToPointDistanceConstraint(
-                self.ball_tarsus_left_frame, [0, 0, 0],
-                self.ball_femur_left_frame, [0, 0, 0], 0.32, 0.32)
-        ik.AddPointToPointDistanceConstraint(
-                self.ball_tarsus_right_frame, [0, 0, 0],
-                self.ball_femur_right_frame, [0, 0, 0], 0.32, 0.32)
-        
         # attempt to solve the IK problem        
-        res = SnoptSolver().Solve(ik.prog())
+        res = SnoptSolver().Solve(self.ik.prog())
         assert res.is_success(), "Inverse Kinematics Failed!"
         
-        return res.GetSolution(ik.q())
+        return res.GetSolution(self.ik.q())
 
     # Compute foot placement location, with respect to stance foot
     def foot_placement(self):
@@ -183,6 +188,9 @@ class PlanarRaibertController(LeafSystem):
         step_count = np.floor(self.t_current/self.T)
         time = self.t_current % self.T
         
+        # TODO: Here, there's a weird phenomena where the legs start drifting apart.
+        # Need to find proper Raibert u0 and uf values below to fix this.
+
         # bezier curve offsets
         z_offset = 0.027                          # z-offset for foot 
         z0 = 0.0                                 # inital swing foot height
@@ -296,14 +304,12 @@ class PlanarRaibertController(LeafSystem):
                 self.plant_context, self.torso_frame,
                 [0, 0, 0], self.plant.world_frame())
         torso_pos_target = np.array([[p_torso[0][0]], [p_torso[1][0]], [self.z0]])
-        torso_rpy_target = RotationMatrix()
 
         # Compute target foot positions. (fixed stance and swinging foot)
         right_pos_target, left_pos_target = self.foot_bezier()
 
         # find desired configuration coordinates to track LIP
-        q_ik = self.DoInverseKinematics(right_pos_target, left_pos_target, 
-                                        torso_pos_target, torso_rpy_target)
+        q_ik = self.DoInverseKinematics(right_pos_target, left_pos_target, torso_pos_target)
         
         # Map generalized positions from IK to actuated joint angles
         # TODO: We should probably give the controller velocity info to prevent jerkiness
