@@ -1,1 +1,1 @@
-# Simulation for Hapry Walking/Flying Humanoid
+# Simulation for Harpy Walking/Flying Humanoid Robot
