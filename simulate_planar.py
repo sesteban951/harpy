@@ -9,12 +9,16 @@
 import numpy as np
 from pydrake.all import *
 from planar_controller import PlanarRaibertController
+from hlip_controller import HybridLIPController
 
 from info_logging import InfoLogger
 
 # Simulation parameters
-sim_time = 10.0      # seconds
+sim_time = 5.0      # seconds
 realtime_rate = 0    # speed of simulation relative to real time
+
+# choose controller type: "raibert" or "hlip"
+controller_type = "hlip" 
 
 model_file = "./models/urdf/harpy_planar.urdf"
 
@@ -117,9 +121,12 @@ builder.Connect(
         thruster_demux.get_output_port(1),
         right_thruster.get_command_input_port())
 
-# Add the controller
-controller = builder.AddSystem(
-        PlanarRaibertController())
+# Add the walking controller
+if controller_type == "hlip":
+    controller = builder.AddSystem(HybridLIPController())
+elif controller_type == "raibert":
+    controller = builder.AddSystem(PlanarRaibertController())
+
 builder.Connect(
         plant.get_state_output_port(),
         controller.GetInputPort("x_hat"))

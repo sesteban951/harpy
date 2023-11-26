@@ -189,7 +189,7 @@ class PlanarRaibertController(LeafSystem):
         time = self.t_current % self.T
         
         # TODO: Here, there's a weird phenomena where the legs start drifting apart.
-        # Need to find proper Raibert u0 and uf values below to fix this.
+        # Need to find proper Raibert u0 and uf values to fix this.
 
         # bezier curve offsets
         z_offset = 0.027                          # z-offset for foot 
