@@ -14,11 +14,11 @@ from hlip_controller import HybridLIPController
 from info_logging import InfoLogger
 
 # Simulation parameters
-sim_time = 5.0      # seconds
+sim_time = 10.0      # seconds
 realtime_rate = 0   # speed of simulation relative to real time
 
 # choose controller type: "raibert" or "hlip"
-controller_type = "hlip" 
+controller_type = "raibert"
 
 model_file = "./models/urdf/harpy_planar.urdf"
 
@@ -163,7 +163,7 @@ q0 = np.array([0, 0.514,     # base position (514 mm default height)
                0, 0,         # thrusters
                0, 0, 0, 0,   # right leg
                0, 0, 0, 0])  # left leg
-v0 = np.array([-0.1,0,          # base velocity
+v0 = np.array([0.3,0,          # base velocity
                0,            # base angular velocity
                0,0,          # thrusters angular velocity
                0,0,0,0,      # right leg joint angular velocity

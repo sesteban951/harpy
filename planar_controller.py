@@ -175,7 +175,10 @@ class PlanarRaibertController(LeafSystem):
         x_des = np.array([[0.0], [0.0]])   # HLIP state desired
         K = np.array([.5, 0.5])           # feedback gain
     
-        u = 0.6*v 
+        # TODO: tune the 
+        K_v = 0.6
+        K_p = 0.3
+        u = K_v*(v+0.0) - K_p*(p)
         return u
 
     # Query desired foot position from B-slpine trajectory

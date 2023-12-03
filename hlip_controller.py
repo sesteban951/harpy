@@ -69,30 +69,29 @@ class HybridLIPController(LeafSystem):
                     self._cache.Eval(context)["thrust"]),
                 prerequisites_of_calc={self._cache.ticket()})
 
-        # Store some variables useful for HLIP
+        # Store some variables useful for HLIP, t_phase in [0,T]
         self.t_phase = 0
 
         # initla HLIP state
         # p = (p_CoM - p_stance) in world frame
         # v = (v_CoM)            in world frame
         # x = [p ; v]
-        p0 = 0.2
-        v0 = -0.1
-        self.x_hlip = np.array([[p0],[v0]])    
-        self.u_hlip = 0
+        self.x_H = np.array([[0],[0]])    
+        self.u_H = 0
     
-        self.x_plus = self.x_hlip # HLIP post_imapct state
+        self.x_plus = self.x_H               # HLIP post_impact state
+        self.x_H_minus = np.array([[0],[0]]) # HLIP pre-impact state
 
         # Linear Inverted Pendulum tuning parameters
         self.g = 9.81                         # gravity [m/s^2]
         self.z0 = 0.5                         # const CoM height [m]
-        lam = np.sqrt(self.g/self.z0)         # natural frequency [1/s]
-        self.A = np.array([[0,1],[lam**2,0]]) # drift matrix of LIP
+        self.lam = np.sqrt(self.g/self.z0)    # natural frequency [1/s]
+        self.A = np.array([[0,1],[self.lam**2,0]]) # drift matrix of LIP
         
-        self.ctrl_pts = 7                     # number of bezier control points
+        self.n_ctrl_pts = 7                   # number of bezier control points
         self.z_apex = 0.2                     # apex height [m]
         self.T = 0.25                         # step period [s]
-        self.steps = 0                        # number of steps taken
+        self.step_count = 0                   # number of steps taken
 
         # Frames used to track LIP trajectories
         self.torso_frame = self.plant.GetFrameByName("Torso")
@@ -102,9 +101,12 @@ class HybridLIPController(LeafSystem):
         # swing and stance foot frames and variables
         self.stance_foot_frame = None
         self.swing_foot_frame = None
+        self.stance_foot_pos = np.zeros(3)
+        self.swing_foot_pos = np.zeros(3)
 
-        # robto CoM state variables
-        self.x_robot = np.array([[0],[0]]) 
+        # robot CoM state variables
+        self.x_com = np.zeros(6)
+        self.x_R = np.zeros(4)
 
         # instantiate inverse kinematics solver
         self.ik = InverseKinematics(self.plant)
@@ -142,12 +144,15 @@ class HybridLIPController(LeafSystem):
 
     ############################### HLIP Functions ############################
 
-    # compute the LIP solution at time t given intial condition x0
+    # for updating LIP solution continuously
     def hlip_solution(self,x0):
-        x_t = sp.linalg.expm(self.A * self.t_phase) @ x0
-        self.x_hlip = x_t
-        self.u = self.hlip_foot_placement(x_t)
+        self.x_H = sp.linalg.expm(self.A * self.t_phase) @ x0
     
+    # compute the LIP solution at time t given intial condition x0
+    def hlip_solution_t(self,x0,t):
+        x_t = sp.linalg.expm(self.A * t) @ x0
+        return x_t
+
     # reset map for LIP after completing swing phase
     def hlip_reset(self, x_minus, u):
 
@@ -165,15 +170,19 @@ class HybridLIPController(LeafSystem):
         return x_plus
     
     # compute foot placement target based on HLIP model
-    def hlip_foot_placement(self,x):
+    def hlip_foot_placement(self):
         
-        # HLIP parameters
-        u_des = 0.0                        # P1 orbit step size desired
-        K = np.array([1, 0.25])           # feedback gain
-        x_des = np.array([[0.0], [0.0]])   # HLIP state desired
+        # foot placement gains
+        k_p = 1
+        k_v = (1/self.lam) * (np.cosh(self.T*self.lam)/np.sinh(self.T*self.lam))
+        k_v_tune = 0.0
+        K = np.array([k_p, k_v + k_v_tune])
+
+        # current robot LIP state
+        x_R = np.array([[self.x_R[0]], [self.x_R[2]]])
 
         # compute foot placement target
-        u = u_des + K @ (x - x_des)
+        u = self.u_H + K @ (x_R - self.x_H_minus)
         return u
 
     # check if reset map need soto be applied
@@ -185,35 +194,59 @@ class HybridLIPController(LeafSystem):
 
         # apply reset map
         if self.t_phase == 0 and self.steps > 0:
-            self.x_plus = self.hlip_reset(self.x_hlip, self.hlip_foot_placement(self.x_hlip))
+            self.x_plus = self.hlip_reset(self.x_H, self.u_H)
             self.x_hlip = self.x_plus
+
+        if self.t_phase == 0:
+            self.x_H_minus = self.hlip_solution_t(self.x_plus, self.T)
      
     ############################### Robot Functions ############################
 
     # compute foot position based on bezier curve
     def foot_bezier(self,t, uf):
         
+        # TODO: figure out how to do this with HLIP (p_CoM - p_CoP)
         # foot placement parameters
         u0 = 0.0
+        uf = 0.0
 
-        # foot clearance tuning parameters
-        z_offset = 0.027  # z-offset on the foot
+        # foot clearance parameters
+        z_offset = 0.0    # z-offset for foot height
         z0 = 0.0          # intial swing foot height
         zf = -0.01        # final swing foot height (neg to ensure foot strike)
 
         # compute bezier curve control points, 7-pt or 5-pt bezier
-        if self.ctrl_pts == 7:
+        if self.n_ctrl_pts == 7:
             ctrl_pts_x = np.array([[u0],[u0],[u0],[(u0+uf)/2],[uf],[uf],[uf]])
             ctrl_pts_z = np.array([[z0],[z0],[z0],[(16/5)*self.z_apex],[zf],[zf],[zf]]) + z_offset
-        elif self.ctrl_pts == 5:
+        elif self.n_ctrl_pts == 5:
             ctrl_pts_x = np.array([[u0],[u0],[(u0+uf)/2],[uf],[uf]])
             ctrl_pts_z = np.array([[z0],[z0],[(8/3)*self.z_apex],[zf],[zf]]) + z_offset
+        else:
+            print("Invalid number of control points.")
 
         # create control points matrix
-        ctrl_pts = np.hstack((ctrl_pts_x,ctrl_pts_z))
+        ctrl_pts = np.vstack((ctrl_pts_x.T,ctrl_pts_z.T))
 
         # evaluate bezier at time t
         bezier = BezierCurve(0,self.T,ctrl_pts)
+        b = np.array(bezier.value(self.t_phase))
+
+        # TODO: figure out how to do this with HLIP (p_CoM - p_CoP)
+        # choose which foot to move, one in stance and one in swing     
+        swing_target = np.array([b.T[0][0], 0.0, b.T[0][1]])[None].T
+        stance_target = np.array([self.swing_foot_last_gnd_pos[0][0], 0.0, z_offset])[None].T
+
+        # left foot in swing
+        if self.step_count % 2 == 0:
+            p_right = stance_target
+            p_left = swing_target
+        # right foot in swin
+        elif self.step_count % 2 == 1:
+            p_right = swing_target
+            p_left = stance_target
+        
+        return p_right, p_left
 
     def update_foot_pos(self):
         # compute robot foot positions
@@ -221,6 +254,26 @@ class HybridLIPController(LeafSystem):
                                                              [0,0,0], self.plant.world_frame())    
         self.left_foot_pos = self.plant.CalcPointsPositions(self.plant_context, self.left_foot_frame, 
                                                           [0,0,0], self.plant.world_frame())
+        
+        # set stance and swing foot positions
+        # left foot in swing
+        if self.step_count % 2 == 0:
+            # update stance and swing foot frames
+            self.stance_foot_frame = self.right_foot_frame
+            self.swing_foot_frame = self.left_foot_frame
+            
+            # update stance and swing foot positions
+            self.stance_foot_pos = self.right_foot_pos
+            self.swing_foot_pos = self.left_foot_pos
+        # right foot in swing
+        elif self.step_count % 2 == 1:
+            # update stance and swing foot frames
+            self.stance_foot_frame = self.left_foot_frame
+            self.swing_foot_frame = self.right_foot_frame
+
+            # update stance and swing foot positions
+            self.stance_foot_pos = self.left_foot_pos
+            self.swing_foot_pos = self.right_foot_pos
     
     # Estimate CoM position and velocity wrt to world frame
     def update_CoM_state(self):
@@ -239,9 +292,17 @@ class HybridLIPController(LeafSystem):
         v_all = J @ v
         v_com = v_all[0:3]
 
-        # update CoM info
-        self.v_com = v_com.T
-        self.p_com = p_com.T
+        # update robot CoM info
+        self.x_com = np.array([p_com[0],
+                                p_com[1],
+                                p_com[2], 
+                                v_com[0],
+                                v_com[1],
+                                v_com[2]])
+        self.x_R = np.array([p_com[0] - self.stance_foot_pos[0][0],
+                             p_com[1] - self.stance_foot_pos[1][0],
+                             v_com[0],
+                             v_com[1]]) 
 
     # inverse kinematics solver
     def DoInverseKinematics(self, p_torso, p_right, p_left):
@@ -262,6 +323,9 @@ class HybridLIPController(LeafSystem):
         self.p_right_cons.evaluator().UpdateLowerBound(p_right_lb)
         self.p_right_cons.evaluator().UpdateUpperBound(p_right_ub)
 
+        # print cost function
+        print("cost function = ", self.ik.prog().GetCosts()[0].get_description())
+
         # solve the IK problem        
         res = SnoptSolver().Solve(self.ik.prog())
         assert res.is_success(), "Inverse Kinematics Failed!"
@@ -276,14 +340,18 @@ class HybridLIPController(LeafSystem):
         x_hat = self.EvalVectorInput(context, 0).get_value()
         self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
         
+        # update robot info
+        self.update_foot_pos()
+        self.update_CoM_state()
+
         # update hlip state
         self.hlip_phase_check(context.get_time())
         self.hlip_solution(self.x_plus)
 
         print(50*"*")
         print("time: ",self.t_phase)
-        print("x_hlip = ", self.x_hlip)
-        print("u = ", self.u)
+        print("x_hlip = ", self.x_H)
+        print("u = ", self.u_H)
 
         # update robot info
         self.update_CoM_state()
