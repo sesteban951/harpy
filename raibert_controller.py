@@ -96,27 +96,10 @@ class RaibertController(LeafSystem):
         self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[2],0)
         self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[3],0)
         
-        # # print ik constraints
-        # print("*"*50)
-        # print(self.ik.prog())
-        # # q_cons = self.ik.prog().GetAllConstraints()[0]
-        # # b_cons = self.ik.prog().GetAllConstraints()[1]
-        # # print(q_cons.evaluator())
-        # # print(b_cons.evaluator())
-        # x = self.ik.prog().decision_variables()
-        # print(x)
-
-        # print(x)
-        # print(self.ik.prog().GetInitialGuess(x[0]))
-        # print(self.ik.prog().GetInitialGuess(x[1]))
-        # print(self.ik.prog().GetInitialGuess(x[2]))
-        # print(self.ik.prog().GetInitialGuess(x[3]))
-        # print("*"*50)
-
         # inverse kinematics solver settings
-        self.epsilon_feet = 0.001   # foot position tolerance     [m]
+        self.epsilon_feet = 0.005    # foot position tolerance     [m]
         self.epsilon_base = 0.01    # torso position tolerance    [m]
-        self.epsilon_orient = 0.1   # torso orientation tolerance [rad]
+        self.epsilon_orient = 0.05   # torso orientation tolerance [rad]
         self.tol_feet = np.array([[self.epsilon_feet], [self.epsilon_feet], [self.epsilon_feet]])
         self.tol_base = np.array([[np.inf], [np.inf], [self.epsilon_base]])
 
@@ -193,15 +176,16 @@ class RaibertController(LeafSystem):
         v_x = self.v[0]
         v_y = self.v[1]
 
-        # TODO: tune the 
-        Kv_x = 0.6
-        Kp_x = 0.3
+        # x-direction tuning parameters
+        Kv_x = 0.0
+        Kp_x = 0.0
         u_x = Kv_x*(v_x) - Kp_x*(p_x)
 
-        Kv_y = 0.6
-        Kp_y = 0.3
-        u_y = Kv_y*(v_y) - Kp_y*(p_y)
-        return u_x
+        # y-direction tuning parameters
+        Kv_y = 2.0
+        Kp_y = 0.0
+        u_y = Kv_y*(v_y) - Kp_y*(p_y) + 0.
+        return u_x, u_y
 
     # Query desired foot position from B-slpine trajectory
     def foot_bezier(self):
@@ -212,44 +196,57 @@ class RaibertController(LeafSystem):
         # compute step count and swing foot time
         step_count = np.floor(self.t_current/self.T)
         time = self.t_current % self.T
-        
-        # TODO: Here, there's a weird phenomena where the legs start drifting apart.
-        # Need to find proper Raibert u0 and uf values to fix this.
-
-        # bezier curve offsets
-        z_offset = 0.027                          # z-offset for foot 
-        z0 = 0.0                                 # inital swing foot height
-        zf = -0.01                               # final swing foot height (neg to ensure foot strike)
-        u0 = self.stance_foot_last_gnd_pos[0][0]  # initial swing foot position
-        uf = u0 + self.foot_placement()               # final swing foot position
     
+        # z-bezier curve offsets
+        z_offset = 0.0                         # z-offset for foot 
+        z0 = -0.01                               # inital swing foot height
+        zf = -0.01                               # final swing foot height (neg to ensure foot strike)
+        
+        uf_x, uf_y = self.foot_placement()       # final swing foot positions
+
+        # x-direction foot placement
+        u0_x = self.stance_foot_last_gnd_pos[0][0]  # initial swing foot position
+        uf_x = u0_x + self.foot_placement()         # final swing foot position
+        uf_x = uf_x[0]
+        # y-direction foot placement
+        u0_y = self.stance_foot_last_gnd_pos[1][0]  # initial swing foot position
+        uf_y = u0_x + self.foot_placement()         # final swing foot position
+        uf_y = uf_y[0]
+
         # compute bezier curve control points, 7-pt or 5-pt bezier
         n = 7
         if n == 7:
+            ctrl_pts_x = np.array([[u0_x],[u0_x],[u0_x],[(u0_x+uf_x)/2],[uf_x],[uf_x],[uf_x]])
+            ctrl_pts_y = np.array([[u0_y],[u0_y],[u0_y],[(u0_y+uf_y)/2],[uf_y],[uf_y],[uf_y]])
             ctrl_pts_z = np.array([[z0],[z0],[z0],[(16/5)*self.z_apex],[zf],[zf],[zf]]) + z_offset
-            ctrl_pts_x = np.array([[u0],[u0],[u0],[(u0+uf)/2],[uf],[uf],[uf]])
         elif n == 5:
+            ctrl_pts_x = np.array([[u0_x],[u0_x],[(u0_x+uf_x)/2],[uf_x],[uf_x]])
+            ctrl_pts_y = np.array([[u0_y],[u0_y],[(u0_y+uf_y)/2],[uf_y],[uf_y]])
             ctrl_pts_z = np.array([[z0],[z0],[(8/3)*self.z_apex],[zf],[zf]]) + z_offset
-            ctrl_pts_x = np.array([[u0],[u0],[(u0+uf)/2],[uf],[uf]])
         else:
             print("Invalid number of control points")
-        ctrl_pts = np.vstack((ctrl_pts_x.T,ctrl_pts_z.T))
+        
+        ctrl_pts = np.vstack((ctrl_pts_x.T,
+                              ctrl_pts_y.T,
+                              ctrl_pts_z.T))
 
         # evaluate bezier at time t
         bezier = BezierCurve(0,self.T,ctrl_pts)
         b = np.array(bezier.value(time))       
         
         # choose which foot to move, one in stance and one in swing
-        stance_target = np.array([self.swing_foot_last_gnd_pos[0][0], 0.0, z_offset])[None].T
+        stance_target = np.array([self.swing_foot_last_gnd_pos[0][0],
+                                  self.swing_foot_last_gnd_pos[1][0],
+                                  z_offset])[None].T
     
         # left foot in swing
         if step_count % 2 == 0:
-            swing_target = np.array([b.T[0][0], 0.065, b.T[0][1]])[None].T
+            swing_target = np.array([b.T[0][0], b.T[0][1] + 0.0, b.T[0][2]])[None].T
             p_right = stance_target
             p_left = swing_target
         # right foot in swing
         else:
-            swing_target = np.array([b.T[0][0], -0.065, b.T[0][1]])[None].T
+            swing_target = np.array([b.T[0][0], b.T[0][1] - 0.0, b.T[0][2]])[None].T
             p_right = swing_target
             p_left = stance_target
 
@@ -286,6 +283,7 @@ class RaibertController(LeafSystem):
         self.p = (self.p_com - self.plant.CalcPointsPositions(self.plant_context, self.stance_foot_frame,
                                                             [0, 0, 0], self.plant.world_frame()).T).T
         self.v = self.v_com
+        
 
     # Estimate CoM position and velocity wrt to world frame
     def update_CoM_state(self):
@@ -307,6 +305,11 @@ class RaibertController(LeafSystem):
         # update CoM info
         self.v_com = v_com.T
         self.p_com = p_com.T
+
+        print("p_com: ")
+        print(self.p_com)
+        print("v_com: ")
+        print(self.v_com)
 
     def CalcOutput(self, context):
         """
@@ -331,8 +334,26 @@ class RaibertController(LeafSystem):
                 [0, 0, 0], self.plant.world_frame())
         torso_pos_target = np.array([[p_torso[0][0]], [p_torso[1][0]], [self.z0]])
 
+        p_right = self.plant.CalcPointsPositions(
+                self.plant_context, self.right_foot_frame,
+                [0, 0, 0], self.plant.world_frame())
+        p_left = self.plant.CalcPointsPositions(
+                self.plant_context, self.left_foot_frame,
+                [0, 0, 0], self.plant.world_frame())
+
         # Compute target foot positions. (fixed stance and swinging foot)
         right_pos_target, left_pos_target = self.foot_bezier()
+
+        print(50*"*")
+        print("time: ", self.t_current)
+        print("steps: ", np.floor(self.t_current/self.T))
+        print("swing foot: ", self.swing_foot_frame.name())
+        print("rightfoot: ", p_right)
+        print("right foot target: ", right_pos_target)
+        print("right error:",np.linalg.norm(p_right - right_pos_target))
+        print("leftfoot: ", p_left)
+        print("left foot target: ", left_pos_target)
+        print("left error:",np.linalg.norm(p_left - left_pos_target))
 
         # find desired configuration coordinates to track LIP
         q_ik = self.DoInverseKinematics(right_pos_target, left_pos_target, torso_pos_target)
@@ -340,7 +361,7 @@ class RaibertController(LeafSystem):
         # Target joint angles and velocities
         # TODO: We should probably give the controller velocity info to prevent jerkiness
         q_nom = np.array([q_ik[7],  q_ik[8],    # Thruster: right, left [rad]
-                          q_ik[9],  q_ik[14],   # Hip: right roll, left roll [rad]
+                          q_ik[9],  -q_ik[14],   # Hip: right roll, left roll [rad]
                           q_ik[10], q_ik[15],   # Hip: right pitch, left pitch [rad]
                           q_ik[11], q_ik[16]])  # Knee: right pitch, left pitch [rad]
         v_nom = np.array([0, 0,   # Thruster: right, left
