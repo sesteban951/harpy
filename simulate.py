@@ -9,10 +9,15 @@
 import numpy as np
 from pydrake.all import *
 from controller import Controller
+from raibert_controller import RaibertController
+from hlip_controller import HybridLIPController
 
 # Simulation parameters
-sim_time = 5.0  # seconds
-realtime_rate = 0
+sim_time = 1.0     # seconds
+realtime_rate = 0.5  # speed of simulation relative to real time
+
+# choose controller type: "raibert" or "hlip"
+controller_type = "raibert" # TODO: get HLIP controller working
 
 model_file = "./models/urdf/harpy.urdf"
 
@@ -65,7 +70,7 @@ plant.AddDistanceConstraint(
 #
 # This is a rough imitation of a low-level motor control strategy that might
 # run on the hardware.
-Kp = 250 * np.ones(plant.num_actuators())
+Kp = 450 * np.ones(plant.num_actuators())
 Kd = 50  * np.ones(plant.num_actuators())
 actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
@@ -110,8 +115,11 @@ builder.Connect(
         right_thruster.get_command_input_port())
 
 # Add the controller
-controller = builder.AddSystem(
-        Controller())
+if controller_type == "hlip": # TODO: get HLIP controller working
+    controller = builder.AddSystem(HybridLIPController())
+elif controller_type == "raibert":
+    controller = builder.AddSystem(RaibertController())
+
 builder.Connect(
         plant.get_state_output_port(),
         controller.GetInputPort("x_hat"))
