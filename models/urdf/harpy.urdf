@@ -76,13 +76,13 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="../meshes/Hip.OBJ"/>
+                <mesh filename="../meshes/HipRight.OBJ"/>
             </geometry>
             <material name="black"/>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="../meshes/Hip.OBJ"/>
+                <mesh filename="../meshes/HipRight.OBJ"/>
             </geometry>
         </collision>
     </link>
@@ -94,13 +94,13 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="../meshes/Hip.OBJ"/>
+                <mesh filename="../meshes/HipLeft.OBJ"/>
             </geometry>
             <material name="black"/>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="../meshes/Hip.OBJ"/>
+                <mesh filename="../meshes/HipLeft.OBJ"/>
             </geometry>
         </collision>
     </link>
@@ -306,6 +306,13 @@
     </link>
 
     <!-- *************************** JOINTS *************************** -->
+    <!-- Torso to world -->
+    <joint name="World_Torso" type="fixed">
+        <parent link="world"/>
+        <child link="Torso"/>
+        <origin xyz="0 0 0.515" rpy="0 0 0"/>
+    </joint>
+
     <!-- Thrusters to Torso -->
     <joint name="Torso_ThrusterRight" type="continuous">
         <parent link="Torso"/>
@@ -331,7 +338,7 @@
         <parent link="Torso"/>
         <child link="HipLeft"/>
         <axis xyz="1 0 0"/>
-        <origin xyz="0.0 0.1 0.0" rpy="3.1416 0.0 0.0"/>
+        <origin xyz="0.0 0.1 0.0" rpy="0.0 0.0 0.0"/>
     </joint>
 
     <!-- Femur to Hips -->
@@ -345,7 +352,7 @@
         <parent link="HipLeft"/>
         <child link="FemurLeft"/>
         <axis xyz="0 1 0"/>
-        <origin xyz="0.06549 0.0 0.0" rpy="-3.14159 0.0 0.0"/>
+        <origin xyz="0.06549 0.0 0.0" rpy="0.0 0.0 0.0"/>
     </joint>
 
     <!-- Tibia to Femur -->

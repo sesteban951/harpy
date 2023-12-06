@@ -36,7 +36,7 @@ class RaibertController(LeafSystem):
         # set the input port
         self.input_port = self.DeclareVectorInputPort(
                 "x_hat",
-                BasicVector(19 + 18))  # 19 positions, 18 velcoities
+                BasicVector(12 + 12))  # 19 positions, 18 velcoities
 
         # We'll do some fancy caching stuff so that both outputs can be
         # computed with the same method.
@@ -91,13 +91,13 @@ class RaibertController(LeafSystem):
         self.ik = InverseKinematics(self.plant)
 
         # set intial condition for quaternion to be on S^3
-        self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[0],1)
-        self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[1],0)
-        self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[2],0)
-        self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[3],0)
+        # self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[0],1)
+        # self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[1],0)
+        # self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[2],0)
+        # self.ik.prog().SetInitialGuess(self.ik.prog().decision_variables()[3],0)
         
         # inverse kinematics solver settings
-        self.epsilon_feet = 0.005    # foot position tolerance     [m]
+        self.epsilon_feet = 0.0001    # foot position tolerance     [m]
         self.epsilon_base = 0.01    # torso position tolerance    [m]
         self.epsilon_orient = 0.05   # torso orientation tolerance [rad]
         self.tol_feet = np.array([[self.epsilon_feet], [self.epsilon_feet], [self.epsilon_feet]])
@@ -324,15 +324,15 @@ class RaibertController(LeafSystem):
         self.plant.SetPositionsAndVelocities(self.plant_context, x_hat)
         self.t_current = context.get_time()
         
-        # update the CoM position and velocity values, stance and swing foot, LIP states
-        self.update_CoM_state()
-        self.update_LIP_state()
+        # # update the CoM position and velocity values, stance and swing foot, LIP states
+        # self.update_CoM_state()
+        # self.update_LIP_state()
 
-        # Compute target base position. (fix orientation and height)
+        # # Compute target base position. (fix orientation and height)
         p_torso = self.plant.CalcPointsPositions(
                 self.plant_context, self.torso_frame,
                 [0, 0, 0], self.plant.world_frame())
-        torso_pos_target = np.array([[p_torso[0][0]], [p_torso[1][0]], [self.z0]])
+        # torso_pos_target = np.array([[p_torso[0][0]], [p_torso[1][0]], [self.z0]])
 
         p_right = self.plant.CalcPointsPositions(
                 self.plant_context, self.right_foot_frame,
@@ -341,13 +341,15 @@ class RaibertController(LeafSystem):
                 self.plant_context, self.left_foot_frame,
                 [0, 0, 0], self.plant.world_frame())
 
-        # Compute target foot positions. (fixed stance and swinging foot)
-        right_pos_target, left_pos_target = self.foot_bezier()
+        # # Compute target foot positions. (fixed stance and swinging foot)
+        torso_pos_target = p_torso
+        right_pos_target =  np.array([[0.3], [-0.065], [0.0 + 0.3]])
+        left_pos_target =  np.array([[0.1], [0.2], [0.0 + 0.1]])
 
         print(50*"*")
-        print("time: ", self.t_current)
-        print("steps: ", np.floor(self.t_current/self.T))
-        print("swing foot: ", self.swing_foot_frame.name())
+        # print("time: ", self.t_current)
+        # print("steps: ", np.floor(self.t_current/self.T))
+        # print("swing foot: ", self.swing_foot_frame.name())
         print("rightfoot: ", p_right)
         print("right foot target: ", right_pos_target)
         print("right error:",np.linalg.norm(p_right - right_pos_target))
@@ -357,13 +359,14 @@ class RaibertController(LeafSystem):
 
         # find desired configuration coordinates to track LIP
         q_ik = self.DoInverseKinematics(right_pos_target, left_pos_target, torso_pos_target)
-        
+        print(q_ik)
         # Target joint angles and velocities
         # TODO: We should probably give the controller velocity info to prevent jerkiness
-        q_nom = np.array([q_ik[7],  q_ik[8],    # Thruster: right, left [rad]
-                          q_ik[9],  -q_ik[14],   # Hip: right roll, left roll [rad]
-                          q_ik[10], q_ik[15],   # Hip: right pitch, left pitch [rad]
-                          q_ik[11], q_ik[16]])  # Knee: right pitch, left pitch [rad]
+        n = 7
+        q_nom = np.array([q_ik[7-n],  q_ik[8-n],    # Thruster: right, left [rad]
+                          q_ik[9-n],  q_ik[14-n],   # Hip: right roll, left roll [rad]
+                          q_ik[10-n], q_ik[15-n],   # Hip: right pitch, left pitch [rad]
+                          q_ik[11-n], q_ik[16-n]])  # Knee: right pitch, left pitch [rad]
         v_nom = np.array([0, 0,   # Thruster: right, left
                           0, 0,   # Hip: right roll, left roll
                           0, 0,   # Hip: right pitch, left pitch 
