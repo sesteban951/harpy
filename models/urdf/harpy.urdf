@@ -306,13 +306,6 @@
     </link>
 
     <!-- *************************** JOINTS *************************** -->
-    <!-- Torso to world -->
-    <joint name="World_Torso" type="fixed">
-        <parent link="world"/>
-        <child link="Torso"/>
-        <origin xyz="0 0 0.515" rpy="0 0 0"/>
-    </joint>
-
     <!-- Thrusters to Torso -->
     <joint name="Torso_ThrusterRight" type="continuous">
         <parent link="Torso"/>
