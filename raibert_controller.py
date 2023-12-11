@@ -102,7 +102,7 @@ class RaibertController(LeafSystem):
 
         # inverse kinematics solver settings
         self.epsilon_feet = 0.005    # foot position tolerance     [m]
-        self.epsilon_base = 0.01    # torso position tolerance    [m]
+        self.epsilon_base = 0.05    # torso position tolerance    [m]
         self.epsilon_orient = 0.005   # torso orientation tolerance [rad]
         self.tol_feet = np.array([[self.epsilon_feet], [self.epsilon_feet], [self.epsilon_feet]])
         self.tol_base = np.array([[np.inf], [np.inf], [self.epsilon_base]])
@@ -165,6 +165,10 @@ class RaibertController(LeafSystem):
         self.p_right_cons.evaluator().UpdateLowerBound(p_right_lb)
         self.p_right_cons.evaluator().UpdateUpperBound(p_right_ub)
 
+        # warm start the IK solver
+        # q_current = self.plant.GetPositions(self.plant_context)
+        # self.ik.prog().SetInitialGuess(self.ik.q(), q_current)
+
         # attempt to solve the IK problem        
         res = SnoptSolver().Solve(self.ik.prog())
         assert res.is_success(), "Inverse Kinematics Failed!"
@@ -183,12 +187,12 @@ class RaibertController(LeafSystem):
         v_y = self.v[1]
 
         # x-direction tuning parameters
-        Kv_x = 1.1
+        Kv_x = 1.3
         Kp_x = 0.1
         u_x = Kv_x*(v_x) - Kp_x*(p_x)
 
         # y-direction tuning parameters
-        Kv_y = .9
+        Kv_y = 1.1
         Kp_y = 0.0
         u_y = Kv_y*(v_y) - Kp_y*(p_y)
 

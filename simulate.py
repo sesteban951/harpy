@@ -13,7 +13,7 @@ from raibert_controller import RaibertController
 from hlip_controller import HybridLIPController
 
 # Simulation parameters
-sim_time = 2.0     # seconds
+sim_time = 2.5     # seconds
 realtime_rate = 0.3  # speed of simulation relative to real time
 
 # choose controller type: "raibert" or "hlip"
@@ -73,7 +73,7 @@ plant.AddDistanceConstraint(
 #
 # This is a rough imitation of a low-level motor control strategy that might
 # run on the hardware.
-Kp = 450 * np.ones(plant.num_actuators())
+Kp = 350 * np.ones(plant.num_actuators())
 Kd = 50  * np.ones(plant.num_actuators())
 actuator_indices = [JointActuatorIndex(i) for i in range(plant.num_actuators())]
 for actuator_index, Kp, Kd in zip(actuator_indices, Kp, Kd):
