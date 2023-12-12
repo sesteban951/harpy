@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+
+<!-- units are in SI -->
+<robot name="test">
+  <material name="caltech_orange">
+        <color rgba="0.92 0.39 0.043 1"/>
+  </material>
+
+  <!--
+  <link name="Staircase">
+      <visual>
+        <geometry>
+            <mesh filename="../meshes/AmberLabStaircase.OBJ">
+        </geometry>
+        <material name="caltech_orange"/>
+      </visual>
+  </link>
+
+  <joint name="World_Staircase" type="fixed">
+        <parent link="world"/>
+        <child link="Staircase"/>
+        <origin xyz="2.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+  -->
+ <link name="Staircase">
+      <visual>
+          <geometry>
+              <mesh filename="../meshes/AmberLabStaircase.OBJ"/>
+          </geometry>
+          <material name="caltech_orange"/>
+      </visual>
+  </link>
+  <joint name="World_Staircase" type="fixed">
+      <parent link="world"/>
+      <child link="Staircase"/>
+      <origin xyz="2.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+  </joint>
+</robot>
