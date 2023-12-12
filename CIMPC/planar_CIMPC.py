@@ -23,7 +23,7 @@ class CIMPC():
         self.model_file = model_file
 
         # MPC tiem horizon settings
-        self.T = 0.5                 # total time horizon
+        self.T = 2.                 # total time horizon
         self.dt = 0.05               # time step
         N = int(self.T/self.dt)      # number of steps
         
@@ -58,7 +58,7 @@ class CIMPC():
         self.params.friction_coefficient = 0.5
         self.params.stiction_velocity = 0.1
 
-        self.params.verbose = False
+        self.params.verbose = True
 
         # solver intial guess and refernce trajectories
         self.q_guess = None
@@ -100,10 +100,38 @@ class CIMPC():
         self.q_guess = deepcopy(self.problem.q_nom)
         opt.Solve(self.q_guess, self.sol, self.stats)
 
-if __name__=="__main__":
+    # visualization
+    def visualize(self,q):
+        # Start meshcat for visualization
+        meshcat = StartMeshcat()
 
-    # Start meshcat for visualization
-    meshcat = StartMeshcat()
+        # create simple diagram
+        builder = DiagramBuilder()
+        plant, scene_graph = AddMultibodyPlantSceneGraph(builder, time_step=1e-3)
+        Parser(plant).AddModels(self.model_file)
+        plant.Finalize()
+
+        # Connect to the meshcat visualizer
+        AddDefaultVisualization(builder, meshcat)
+
+        # Build the system diagram
+        diagram = builder.Build()
+        diagram_context = diagram.CreateDefaultContext()
+        plant_context = diagram.GetMutableSubsystemContext(plant, diagram_context)
+        plant.get_actuation_input_port().FixValue(plant_context,
+                np.zeros(plant.num_actuators()))
+
+        # Step through q, setting the plant positions at each step
+        meshcat.StartRecording()
+        for k in range(len(q)):
+            diagram_context.SetTime(k * self.dt)
+            plant.SetPositions(plant_context, q[k])
+            diagram.ForcedPublish(diagram_context)
+            time.sleep(self.dt)
+        meshcat.StopRecording()
+        meshcat.PublishRecording()
+
+if __name__=="__main__":
 
     # Relative path to the model file that we'll use
     model_file = "../models/urdf/harpy_planar_CIMPC.urdf"
@@ -134,3 +162,5 @@ if __name__=="__main__":
 
     print(q_sol)
     print(solve_time)
+
+    mpc.visualize(q_sol)
