@@ -7,6 +7,9 @@
     <material name="black">
         <color rgba="0.2 0.2 0.2 1"/>
     </material>
+    <material name="black_seethrough">
+        <color rgba="0.2 0.2 0.2 0.1"/>
+    </material>
 
     <!-- *************************** LINKS *************************** -->
     <!-- Torso -->
@@ -98,7 +101,7 @@
             <geometry>
                 <capsule length="0.3" radius="0.015"/>
             </geometry>
-            <material name="black"/>
+            <material name="black_seethrough"/>
         </visual>
     </link>
     <link name="FemurLeft">
@@ -112,7 +115,7 @@
             <geometry>
                 <capsule length="0.3" radius="0.015"/>
             </geometry>
-            <material name="black"/>
+            <material name="black_seethrough"/>
         </visual>
     </link>
 
@@ -128,7 +131,7 @@
             <geometry>
                 <capsule length="0.3" radius="0.015"/>
             </geometry>
-            <material name="black"/>
+            <material name="black_seethrough"/>
         </visual>
     </link>
     <link name="TibiaLeft">
@@ -142,7 +145,7 @@
             <geometry>
                 <capsule length="0.3" radius="0.015"/>
             </geometry>
-            <material name="black"/>
+            <material name="black_seethrough"/>
         </visual>
     </link>
 

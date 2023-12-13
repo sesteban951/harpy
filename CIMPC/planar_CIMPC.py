@@ -2,7 +2,7 @@
 
 # import drake
 from pydrake.all import (StartMeshcat, DiagramBuilder,
-        AddMultibodyPlantSceneGraph, AddDefaultVisualization, Parser)
+        AddMultibodyPlantSceneGraph, AddDefaultVisualization, Parser, BezierCurve)
 
 # import pyidto tools
 from pyidto.trajectory_optimizer import TrajectoryOptimizer
@@ -16,14 +16,22 @@ from copy import deepcopy
 import time
 
 class CIMPC():
-    "Simple CI-MPC class for the Harpy robot."
+    """Simple CI-MPC class for the Harpy robot.
+    Inputs: mode file    
+    """
+
+    # TODO: Think about how to track arbitrary forces and torques on
+    #       the robot. This is not the case for the real robot. 
+    #       The map:  [f_r, f_l] -> [f, tau] is injective. Need to project to the set of 
+    #       feasible torque wrenches or somehting.
+
     def __init__(self, model_file):
 
         # robot file
         self.model_file = model_file
 
-        # MPC tiem horizon settings
-        self.T = 2.                 # total time horizon
+        # MPC time horizon settings
+        self.T = 5.0                 # total time horizon
         self.dt = 0.05               # time step
         N = int(self.T/self.dt)      # number of steps
         
@@ -33,9 +41,9 @@ class CIMPC():
 
         # stage cost weights
         self.problem.Qq = np.diag([2, 2, 2, 0.1, 0.1, 0.1, 0.1])
-        self.problem.Qv = np.diag([0.2, 0.2, 0.2, 0.1, 0.1, 0.1, 0.1])
+        self.problem.Qv = np.diag([2, 2, 2, 0.1, 0.1, 0.1, 0.1])
         self.problem.R = np.diag([1e5, 1e5, 1e5,
-                                  0.01, 0.01, 0.01, 0.01])
+                                  0.02, 0.02, 0.02, 0.02])
         # terminal cost weights
         self.problem.Qf_q = 2 * np.eye(7)
         self.problem.Qf_v = 0.2 * np.eye(7)
@@ -65,31 +73,42 @@ class CIMPC():
         self.q0 = None
         self.qf = None
 
+        # control points for bezier curve
+        self.ctrl_pts = None
+
         # Allocate some structs that will hold the solution
         self.sol = TrajectoryOptimizerSolution()
         self.stats = TrajectoryOptimizerStats()
 
-    # update intial conditions
-    def update_init_final_condition(self,q0,qf):
-        self.q0 = q0
-        self.qf = qf
-        self.problem.q_init = q0
-        self.problem.v_init = np.zeros(7)
-    
-    # make a reference trajectory
-    def update_ref_traj(self):
+    # create bezier curve trajectory
+    def update_ref_traj_(self, ctrl_pts):
+        # create bezier curve parameterized by control points and t in [0, T]
+        b = BezierCurve(0, self.T, ctrl_pts)
+        
         # noimnal trajectory containers
         q_nom = []
         v_nom = []
 
-        # interpolate to get refernece trajectory
+        # evaluate bezier curve at each time step
         for k in range(self.problem.num_steps + 1):
-            sigma = k / self.problem.num_steps
-            q_nom.append((1 - sigma) * self.q0 + sigma * self.qf)
-            v_nom.append(np.array([0.17, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]))
+            # time at time step k
+            t_k = k * self.dt
 
+            # evaluate bezier curve at time t
+            q_k = b.value(t_k)             # eval bezier curve at time t
+            v_k = b.EvalDerivative(t_k, 1) # 1st derivative at time t
+
+            # append to nominal trajectory
+            q_nom.append(q_k)
+            v_nom.append(v_k)
+
+        # assign reference trajectory to problem
         self.problem.q_nom = q_nom
         self.problem.v_nom = v_nom
+
+        # update intial conditions
+        self.problem.q_init = q_nom[0]
+        self.problem.v_init = v_nom[0]
 
     # solve the MPC problem
     def solve(self):
@@ -136,23 +155,57 @@ if __name__=="__main__":
     # Relative path to the model file that we'll use
     model_file = "../models/urdf/harpy_planar_CIMPC.urdf"
 
-    # intial and final configuartion
-    q0 = np.array([0.0,   # base horizontal position
-                        0.515, # base vertical position
-                        0.0,   # base orientation
-                       -0.45,  # right hip
-                        1.15,  # right knee
-                       -0.45,  # left hip
-                        1.15]) # left knee
-    qf = deepcopy(q0)
-    qf[0] = q0[0] + 0.17 * 0.5
+    # intial configuartion
+    q0_b = np.array([0.0,    # base horizontal position
+                     0.52,  # base vertical position
+                     0.0])   # base orientation
+    q0_j = np.array([-0.45,  # right hip
+                      1.15,  # right knee
+                     -0.45,  # left hip
+                      1.15]) # left knee
+    q0 = np.vstack((q0_b.reshape(-1, 1), 
+                    q0_j.reshape(-1, 1)))
+
+    # final configuration
+    qf_b = np.array([2.5,    # base horizontal position
+                     0.52,  # base vertical position
+                     0.0])   # base orientation
+    qf_j = np.array([-0.45,  # right hip
+                      1.15,  # right knee
+                     -0.45,  # left hip
+                      1.15]) # left knee
+    qf = np.vstack((qf_b.reshape(-1, 1), 
+                    qf_j.reshape(-1, 1)))
+    
+    # define base x-z position and orientation, and joint bezier control points for state ref traj
+    n_pts = 5
+    # linear interpolation
+    if n_pts == 3:
+        ctrl_pts_x = np.array([q0_b[0], (q0_b[0]+qf_b[0])/2, qf_b[0]])
+        ctrl_pts_z = np.array([q0_b[1], (q0_b[1]+qf_b[1])/2, qf_b[1]])
+        ctrl_pts_t = np.array([q0_b[2], (q0_b[2]+qf_b[2])/2, qf_b[2]])
+        ctrl_pts_j = np.array([q0_j, (q0_j+qf_j)/2, qf_j]).T
+    # enforce 0 intial and final velocity
+    elif n_pts == 5:
+        ctrl_pts_x = np.array([q0_b[0], q0_b[0], (q0_b[0]+qf_b[0])/2, qf_b[0], qf_b[0]])
+        ctrl_pts_z = np.array([q0_b[1], q0_b[1], (q0_b[1]+qf_b[1])/2, qf_b[1], qf_b[1]])
+        ctrl_pts_t = np.array([q0_b[2], q0_b[2], (q0_b[2]+qf_b[2])/2, qf_b[2], qf_b[2]])
+        ctrl_pts_j = np.array([q0_j, q0_j, (q0_j+qf_j)/2, qf_j, qf_j]).T
+    elif n_pts == 7:
+        # TODO: implement a seven point bezier curve. How should I do this?
+        pass
+
+    # define full configuration bezier control points, control points are columns
+    ctrl_pts = np.vstack((ctrl_pts_x, ctrl_pts_z, ctrl_pts_t, ctrl_pts_j))
+
+    # b = BezierCurve(0,10,ctrl_pts)
+    # db_dt = b.EvalDerivative(5,1)
 
     # insatntiate the CIMPC class
     mpc = CIMPC(model_file)
 
     # update the initial condition
-    mpc.update_init_final_condition(q0,qf)
-    mpc.update_ref_traj()
+    mpc.update_ref_traj_(ctrl_pts)
 
     # solve the MPC problem
     mpc.solve()
@@ -160,7 +213,7 @@ if __name__=="__main__":
     q_sol = mpc.sol.q
     solve_time = np.sum(mpc.stats.iteration_times)
 
-    print(q_sol)
-    print(solve_time)
+    print("-"*30)
+    print("Solve time:", solve_time)
 
     mpc.visualize(q_sol)
