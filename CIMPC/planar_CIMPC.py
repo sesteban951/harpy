@@ -14,6 +14,7 @@ from pyidto.trajectory_optimizer_stats import TrajectoryOptimizerStats
 import numpy as np
 from copy import deepcopy
 import time
+import yaml
 
 class CIMPC():
     """Simple CI-MPC class for the Harpy robot.
@@ -31,7 +32,7 @@ class CIMPC():
         self.model_file = model_file
 
         # MPC time horizon settings
-        self.T = 5.0                 # total time horizon
+        self.T = 4.0                 # total time horizon
         self.dt = 0.05               # time step
         N = int(self.T/self.dt)      # number of steps
         
@@ -152,11 +153,16 @@ class CIMPC():
 
 if __name__=="__main__":
 
-    # Relative path to the model file that we'll use
-    model_file = "../models/urdf/harpy_planar_CIMPC.urdf"
+    # import simulaiton config yaml file
+    with open('sim_config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+
+    # import all sim config settings
+    sim_type = config["sim_type"]
+    model_file = config[sim_type]["model_file"]
 
     # intial configuartion
-    q0_b = np.array([0.0,    # base horizontal position
+    q0_b = np.array([0,    # base horizontal position
                      0.52,  # base vertical position
                      0.0])   # base orientation
     q0_j = np.array([-0.45,  # right hip
@@ -167,7 +173,7 @@ if __name__=="__main__":
                     q0_j.reshape(-1, 1)))
 
     # final configuration
-    qf_b = np.array([2.5,    # base horizontal position
+    qf_b = np.array([0.5,    # base horizontal position
                      0.52,  # base vertical position
                      0.0])   # base orientation
     qf_j = np.array([-0.45,  # right hip
@@ -191,6 +197,7 @@ if __name__=="__main__":
         ctrl_pts_z = np.array([q0_b[1], q0_b[1], (q0_b[1]+qf_b[1])/2, qf_b[1], qf_b[1]])
         ctrl_pts_t = np.array([q0_b[2], q0_b[2], (q0_b[2]+qf_b[2])/2, qf_b[2], qf_b[2]])
         ctrl_pts_j = np.array([q0_j, q0_j, (q0_j+qf_j)/2, qf_j, qf_j]).T
+    # custom control points, should be expressive enough to do most things?
     elif n_pts == 7:
         # TODO: implement a seven point bezier curve. How should I do this?
         pass
@@ -198,13 +205,10 @@ if __name__=="__main__":
     # define full configuration bezier control points, control points are columns
     ctrl_pts = np.vstack((ctrl_pts_x, ctrl_pts_z, ctrl_pts_t, ctrl_pts_j))
 
-    # b = BezierCurve(0,10,ctrl_pts)
-    # db_dt = b.EvalDerivative(5,1)
-
     # insatntiate the CIMPC class
     mpc = CIMPC(model_file)
 
-    # update the initial condition
+    # update the reference trajecotry
     mpc.update_ref_traj_(ctrl_pts)
 
     # solve the MPC problem
@@ -213,7 +217,6 @@ if __name__=="__main__":
     q_sol = mpc.sol.q
     solve_time = np.sum(mpc.stats.iteration_times)
 
-    print("-"*30)
-    print("Solve time:", solve_time)
+    print("\nSolve time:", solve_time)
 
     mpc.visualize(q_sol)

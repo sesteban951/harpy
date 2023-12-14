@@ -1,0 +1,13 @@
+# simualtion type
+sim_type: "walk"
+
+# nominal robot joint configuration
+# right hip, right knee, left hip, left knee
+# [-0.45, 1.15, -0.45, 1.15])
+
+stand:
+  model_file: "../models/urdf/harpy_planar_CIMPC.urdf"
+walk:
+  model_file: "../models/urdf/harpy_planar_CIMPC.urdf"
+stairs:
+  model_file: "../models/urdf/harpy_planar_CIMPC_staircase.urdf"

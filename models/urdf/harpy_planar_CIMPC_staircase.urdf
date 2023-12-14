@@ -10,6 +10,9 @@
     <material name="black_transparent">
         <color rgba="0.2 0.2 0.2 0.05"/>
     </material>
+    <material name="caltech_orange">
+        <color rgba="0.92 0.39 0.043 0.5"/>
+    </material>
 
     <!-- *************************** LINKS *************************** -->
     <!-- Torso -->
@@ -193,7 +196,7 @@
 
     <!-- Ground -->
     <link name="ground">
-        <inertial>  <!-- dummy inertia: ground is welded to the world frame -->
+        <inertial>  
             <mass value="1"/>
             <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
         </inertial>
@@ -201,6 +204,25 @@
             <origin rpy="0 0 0" xyz="0 0 -50"/>
             <geometry>
                 <box size="100 100 100"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Obstacles -->
+    <link name="Staircase"> <!-- 0.5715 tall -->
+        <inertial>  
+            <mass value="1000"/>
+            <inertia ixx="0.0001" ixy="0" ixz="0" iyy="0.0001" iyz="0" izz="0.0001"/>
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes/AmberLabStaircase.OBJ"/>
+            </geometry>
+            <material name="caltech_orange"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes/AmberLabStaircase.OBJ"/>
             </geometry>
         </collision>
     </link>
@@ -291,6 +313,13 @@
         <parent link="world"/>
         <child link="ground"/>
         <origin xyz="0 0 0" rpy="0 0 0"/>
+    </joint>
+
+    <!-- Obstacles -->
+    <joint name="World_Staircase" type="fixed">
+        <parent link="world"/>
+        <child link="Staircase"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 1.5708"/>
     </joint>
 
     <!-- *************************** ACTUATORS *************************** -->
