@@ -216,13 +216,15 @@
         </inertial>
         <visual>
             <geometry>
-                <mesh filename="../meshes/AmberLabStaircase.OBJ"/>
+                <!-- <mesh filename="../meshes/AmberLabStaircase.OBJ"/> -->
+                <mesh filename="../meshes/AmberLabStaircase_2inFillet.OBJ"/>
             </geometry>
             <material name="caltech_orange"/>
         </visual>
         <collision>
             <geometry>
-                <mesh filename="../meshes/AmberLabStaircase.OBJ"/>
+                <!-- <mesh filename="../meshes/AmberLabStaircase.OBJ"/> -->
+                <mesh filename="../meshes/AmberLabStaircase_2inFillet.OBJ"/>
             </geometry>
         </collision>
     </link>

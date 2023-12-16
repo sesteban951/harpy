@@ -28,8 +28,6 @@ class CIMPC():
 
     def __init__(self, sim_type, config):
 
-        sim_type = "jump"
-
         # robot file
         self.model_file = config[sim_type]["model_file"]
 
@@ -118,8 +116,6 @@ class CIMPC():
 
     # solve the MPC problem
     def solve(self):
-        # make the refernce trajectory
-        self.update_ref_traj_(self.ctrl_pts)
 
         # instantiate trajectory optimizer
         opt = TrajectoryOptimizer(self.model_file,self.problem, self.params, self.dt)
@@ -127,6 +123,7 @@ class CIMPC():
         # solve the problem
         self.q_guess = deepcopy(self.problem.q_nom)
         opt.Solve(self.q_guess, self.sol, self.stats)
+        self.stats = TrajectoryOptimizerStats()
 
     # visualization
     def visualize(self,q):
@@ -159,14 +156,6 @@ class CIMPC():
         meshcat.StopRecording()
         meshcat.PublishRecording()
 
-        print("Qq:\n",self.problem.Qq)
-        print("Qv:\n",self.problem.Qv)
-        print("R: \n",self.problem.R)
-        print("Qf_q:\n",self.problem.Qf_q)
-        print("Qf_v:\n",self.problem.Qf_v)
-
-        print("ctrl_pts:\n",self.ctrl_pts)
-
 if __name__=="__main__":
 
     # import simulaiton config yaml file
@@ -174,15 +163,24 @@ if __name__=="__main__":
         config = yaml.safe_load(file)
 
     # insatntiate the CIMPC class
-    sim_type = "walk"
+    sim_type = "front_flip"
     mpc = CIMPC(sim_type, config)
+    mpc.update_ref_traj_(mpc.ctrl_pts)
 
+    # see the reference trajectory or solve the MPC problem
+    # 1 = see ref, 0 = solve MPC
+    see_ref_traj = 0
+    
+    # just see the refernce trajecotry
+    if see_ref_traj == 1:
+        q_ref = mpc.problem.q_nom
+        mpc.visualize(q_ref)    
+    
     # solve the MPC problem
-    mpc.solve()
+    elif see_ref_traj == 0:    
+        mpc.solve()
+        q_sol = mpc.sol.q
+        solve_time = np.sum(mpc.stats.iteration_times)
+        print("\nSolve time:", solve_time)
 
-    q_sol = mpc.sol.q
-    solve_time = np.sum(mpc.stats.iteration_times)
-
-    print("\nSolve time:", solve_time)
-
-    mpc.visualize(q_sol)
+        mpc.visualize(q_sol)
