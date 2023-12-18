@@ -13,8 +13,8 @@ from raibert_controller import RaibertController
 from hlip_controller import HybridLIPController
 
 # Simulation parameters
-sim_time = 2.5     # seconds
-realtime_rate = 0.3  # speed of simulation relative to real time
+sim_time = 2.2     # seconds
+realtime_rate = 0.8  # speed of simulation relative to real time
 
 # choose controller type: "raibert" or "hlip"
 controller_type = "raibert" # TODO: get HLIP controller working
