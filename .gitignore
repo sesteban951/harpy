@@ -1,3 +1,6 @@
 *.swp
 /data/*.txt
+/CIMPC/data/*.txt
+*.txt
+*.asv
 __pycache__
