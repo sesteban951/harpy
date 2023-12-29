@@ -103,7 +103,7 @@ while i <= length(time)
     d2 = plot(q_sol(i,6),q_sol(i,7),'.k','MarkerSize',30);
     xlabel('$l_{hip}$','FontSize',18,'Interpreter','latex')
     ylabel('$l_{knee}$','FontSize',18,'Interpreter','latex')
-    t = sprintf("Right Leg, $t = $%.2f",time(i));
+    t = sprintf("Left Leg, $t = $%.2f",time(i));
     title(t,'Interpreter','latex','FontSize',18);
     xlim([1.1*min(q_sol(:,6)),max(q_sol(:,6))]);
     ylim([1.1*min(q_sol(:,7)),max(q_sol(:,7))]);
