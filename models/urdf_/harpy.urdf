@@ -1,0 +1,393 @@
+<?xml version="1.0"?>
+
+<!-- units are in SI -->
+<robot name="harpy_model">
+
+    <!-- *************************** MATERIALS *************************** -->
+    <material name="black">
+        <color rgba="0.2 0.2 0.2 1"/>
+    </material>
+    
+    <!-- *************************** LINKS *************************** -->
+    <!--Base link-->
+    <link name="BaseLink"/>
+
+    <!-- Torso -->
+    <link name="Torso">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.08081922 0.00039877 -0.01702118"/>
+            <mass value="3.2677"/>
+            <inertia ixx="0.05031174" ixy="0.00048513" ixz="-0.00001617" 
+                     iyy="0.02068285" iyz="-0.00006038" izz="0.05619613"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/Torso.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/Torso.obj"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- FrontalHip -->
+    <link name="FrontalHipRight">
+        <inertial>
+            <origin rpy="-1.57 0 0" xyz="0 -0.03048 0.02167"/>
+            <mass value="0.16423"/>
+            <inertia ixx="0.0002216588" ixy="-1.3E-10" ixz="-1.8E-10" iyy="0.0001625677" iyz="-0.0000760325" izz="0.0001434828"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/HipCouplingRight.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/HipCouplingRight.obj"/>
+            </geometry>
+        </collision>
+    </link>
+    <link name="FrontalHipLeft">
+        <inertial>
+            <origin rpy="1.57 0 0" xyz="0.0 0.03048 0.02167"/>
+            <mass value="0.16423"/>
+            <inertia ixx="0.0002216588" ixy="-1.3E-10" ixz="-1.8E-10" iyy="0.0001625677" iyz="0.0000760325" izz="0.0001434828"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/HipCouplingLeft.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/HipCouplingLeft.obj"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Hip -->
+    <link name="SagittalHipRight">
+        <inertial>
+            <origin rpy="0 0 -1.2" xyz="-0.04421902 -0.06615100 0.02343725"/>
+            <mass value="0.62604160"/>
+            <inertia ixx="0.00276505" ixy="0.00153900" ixz="-0.00000512" iyy="0.00149602" iyz="-0.00000768" izz="0.00359441"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/HipRight.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/HipRight.obj"/>
+            </geometry>
+        </collision>
+    </link>
+    <link name="SagittalHipLeft">
+        <inertial>
+            <origin rpy="0 0 -1.2" xyz="0.04586521 0.06502045 -0.02343725"/>
+            <mass value="0.62604160"/>
+            <inertia ixx="0.0026909813" ixy="0.00156749" ixz="-0.00000533" iyy="0.00157009" iyz="-0.00000753" izz="0.00359441"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/HipLeft.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/HipLeft.obj"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Knee -->
+    <link name="KneeRight">
+        <inertial>
+            <origin rpy="0 0 -1.35" xyz="-0.097517 0.06879 0.006394"/>
+            <mass value="0.13046943"/>
+            <inertia ixx="0.00079103" ixy="-0.00084157" ixz="-0.00002123" iyy="0.00095844" iyz="-0.00001923" izz="0.00173789"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/KneeRight.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/KneeRight.obj"/>
+            </geometry>
+        </collision>
+    </link>
+    <link name="KneeLeft">
+        <inertial>
+            <origin rpy="0 0 0.2" xyz="0.06879 0.097517 -0.006394"/>
+            <mass value="0.13046943"/>
+            <inertia ixx="0.00079103" ixy="-0.00084157" ixz="-0.00002123" iyy="0.00095844" iyz="-0.00001923" izz="0.00173789"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/KneeLeft.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/KneeLeft.obj"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Ankle -->
+    <link name="AnkleRight">
+        <inertial>
+            <origin rpy="0 0 1.04" xyz="-0.02193081 -0.01265732 -0.00002585"/>
+            <mass value="0.07857811"/>
+            <inertia ixx="0.00009120" ixy="0.00014304" ixz="-0.00000008" iyy="0.00025640" iyz="-0.00000010" izz="0.00033557"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/AnkleRight.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/AnkleRight.obj"/>
+            </geometry>
+        </collision>
+    </link>
+    <link name="AnkleLeft">
+        <inertial>
+            <origin rpy="0 0 2.094" xyz="0.01265732 0.02193081 0.00002585"/>
+            <mass value="0.07857811"/>
+            <inertia ixx="0.00025640" ixy="0.00014304" ixz="-0.00000010" iyy="0.00009120" iyz="-0.00000008" izz="0.00033557"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/AnkleLeft.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/AnkleLeft.obj"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Foot -->
+    <link name="FootRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 -0.01428958 0.0"/>
+            <mass value="0.02387642"/>
+            <inertia ixx="0.00000158" ixy="0.0" ixz="0.0" iyy="0.00001558" iyz="0.0" izz="0.00001677"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/Foot.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/Foot.obj"/>
+            </geometry>
+        </collision>
+    </link>
+    <link name="FootLeft">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 -0.01428958 0.0"/>
+            <mass value="0.02387642"/>
+            <inertia ixx="0.00000158" ixy="0.0" ixz="0.0" iyy="0.00001558" iyz="0.0" izz="0.00001677"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/Foot.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/Foot.obj"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!-- Thruster -->
+    <link name="ThrusterRight">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 0.0 -0.00964905"/>
+            <mass value="0.12"/>
+            <inertia ixx="0.00011044" ixy="0.0" ixz="0.0" iyy="0.00011045" iyz="0.0" izz="0.00009201"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/ThrusterRight.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/ThrusterRight.obj"/>
+            </geometry>
+        </collision>
+    </link>    
+    <link name="ThrusterLeft">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0.0 0.0 -0.00964905"/>
+            <mass value="0.12"/>
+            <inertia ixx="0.00011044" ixy="0.0" ixz="0.0" iyy="0.00011045" iyz="0.0" izz="0.00009201"/>   
+        </inertial>
+        <visual>
+            <geometry>
+                <mesh filename="../meshes_/ThrusterLeft.obj"/>
+            </geometry>
+            <material name="black"/>
+        </visual>
+        <collision>
+            <geometry>
+                <mesh filename="../meshes_/ThrusterLeft.obj"/>
+            </geometry>
+        </collision>
+    </link>  
+
+    <!--Shockabsorber link-->
+    <link name="SARight"/>
+    <link name="FSARight"/>
+    
+    <!--FootSA Link-->
+    <link name="SALeft"/>
+    <link name="FSALeft"/>
+
+    <!-- *************************** JOINTS *************************** -->
+    <!-- Base frame to torso -->
+    <joint name="Basejoint" type="fixed">
+        <parent link="BaseLink"/>
+        <child link="Torso"/>
+        <origin xyz="0.0 0.0 0.0" rpy="0.0 -1.5708 3.1416"/>
+    </joint>
+
+    <!-- Upperbody to frontal -->
+    <joint name="FrontalRightJoint" type="continuous">
+        <parent link="Torso"/>
+        <child link="FrontalHipRight"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.0 0.1 0.03140" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="FrontalLeftJoint" type="continuous">
+        <parent link="Torso"/>
+        <child link="FrontalHipLeft"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.0 -0.1 0.03140" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+    <!-- Frontal to Sagittal -->
+    <joint name="SagittalRightJoint" type="continuous">
+        <parent link="FrontalHipRight"/>
+        <child link="SagittalHipRight"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.0 0.0 0.06405" rpy="1.57 1.57 0.0"/>
+    </joint>
+
+    <joint name="SagittalLeftJoint" type="continuous">
+        <parent link="FrontalHipLeft"/>
+        <child link="SagittalHipLeft"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.0 0.0 0.06405" rpy="1.57 -1.57 0"/>
+    </joint>
+
+    <!--Sagittal to Knee -->
+    <joint name="KneeRightJoint" type="continuous">
+        <parent link="SagittalHipRight"/>
+        <child link="KneeRight"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="-0.08531 -0.12761 0.05941" rpy="3.14 0.0 1.57"/>
+    </joint>
+
+    <joint name="KneeLeftJoint" type="continuous">
+        <parent link="SagittalHipLeft"/>
+        <child link="KneeLeft"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.08531 0.12761 -0.05941  " rpy="3.14 0.0 -3.14"/>
+    </joint>
+  
+    <!-- Ankle to foot-->
+    <joint name="FootRightJoint" type="continuous">
+        <parent link="AnkleRight"/>
+        <child link="FootRight"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="-0.11258 -0.065  0.0 " rpy="0.0 0.0 -1.57"/>
+    </joint>
+
+    <joint name="FootLeftJoint" type="continuous">
+        <parent link="AnkleLeft"/>
+        <child link="FootLeft"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.065 0.11258 0.0"  rpy="0.0 0.0 3.14"/>
+    </joint>
+
+    <!-- Knee to Ankle-->
+    <joint name="AnkleRightJoint" type="continuous">
+        <parent link="KneeRight"/>
+        <child link="AnkleRight"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="-0.26067 0.18387 0.00787 " rpy="0.0 0.0 0.0"/>
+    </joint>
+    <joint name="AnkleLeftJoint" type="continuous">
+        <parent link="KneeLeft"/>
+        <child link="AnkleLeft"/>
+        <axis xyz="0 0 1"/>
+        <origin xyz="0.18387 0.26067  -0.00787"  rpy="3.14 0.0 -3.14"/>
+    </joint>
+
+    <!-- Torso to thrusters-->
+    <joint name="ThrusterRightJoint" type="continuous">
+        <parent link="Torso"/>
+        <child link="ThrusterRight"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.101 0.25 0.0 " rpy="0.0 1.57 0.0"/>
+    </joint>
+    <joint name="ThrusterLeftJoint" type="continuous">
+        <parent link="Torso"/>
+        <child link="ThrusterLeft"/>
+        <axis xyz="0 1 0"/>
+        <origin xyz="0.101 -0.25 0.0"  rpy="0.0 1.57 0.0"/>
+    </joint>
+
+    <!-- Hip to SA (Right)-->
+    <joint name="SARightJoint" type="fixed">
+        <parent link="SagittalHipRight"/>
+        <child link="SARight"/>
+        <origin xyz="0.05195 0.077733 0.02801" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <!--Foot to SA (Right)-->
+    <joint name="FSARightJoint" type="fixed">
+        <parent link="AnkleRight"/>
+        <child link="FSARight"/>
+        <origin xyz="0.05196 0.03 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+ 
+    <!-- Hip to SA (Left)-->
+    <joint name="SALeftJoint" type="fixed">
+        <parent link="SagittalHipLeft"/>
+        <child link="SALeft"/>
+        <origin xyz="0.05195 0.07640 0.02801" rpy="0.0 0.0 0.0"/>
+    </joint>
+    <!--Foot to SA (left)-->
+    <joint name="FSALeftJoint" type="fixed">
+        <parent link="AnkleLeft"/>
+        <child link="FSALeft"/>
+        <origin xyz="0.03 0.05196 0.0" rpy="0.0 0.0 0.0"/>
+    </joint>
+
+</robot>
