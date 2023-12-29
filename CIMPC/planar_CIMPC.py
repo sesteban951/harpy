@@ -15,6 +15,7 @@ import numpy as np
 from copy import deepcopy
 import time
 import yaml
+import datetime
 
 class CIMPC():
     """Simple CI-MPC class for the Harpy robot.
@@ -161,12 +162,19 @@ class CIMPC():
     # save the reference and solution trajectories.
     def save_solution(self):
 
-        # save ROM trajectories       
-        np.savetxt("data/q_nom.txt", np.array(self.problem.q_nom))
-        np.savetxt("data/q_sol.txt", np.array(self.sol.q))
+        # get current date and time
+        now = datetime.datetime.now()
+        time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
+
+        # save ROM trajectories
+        q_nom_str = "data/" + sim_type + "_q_nom_" + time_str + ".txt"
+        q_sol_str = "data/" + sim_type + "_q_sol_" + time_str + ".txt"       
+        np.savetxt(q_nom_str, np.array(self.problem.q_nom))
+        np.savetxt(q_sol_str, np.array(self.sol.q))
 
         # save the time stamps
-        np.savetxt("data/time.txt", np.array(self.t_array))
+        t_str = "data/" + sim_type + "_time_" + time_str + ".txt"
+        np.savetxt(t_str, np.array(self.t_array))
 
         # create model and diagram context
         self.create_model()
@@ -193,9 +201,12 @@ class CIMPC():
             l_pos_list.append(np.array(l_pos.T)[0])
 
         # save foot positions
-        np.savetxt("data/pos_r_foot.txt", np.array(r_pos_list)) 
-        np.savetxt("data/pos_l_foot.txt", np.array(l_pos_list))
-
+        right_str = "data/" + sim_type + "_pos_r_foot_" + time_str + ".txt"
+        left_str = "data/" + sim_type + "_pos_l_foot_" + time_str + ".txt"
+        np.savetxt(right_str, np.array(r_pos_list)) 
+        np.savetxt(left_str, np.array(l_pos_list))
+        
+        print("\nSaved the reference trajectory data.")
 
     # visualization
     def visualize(self,q):
@@ -226,7 +237,7 @@ if __name__=="__main__":
         config = yaml.safe_load(file)
 
     # insatntiate the CIMPC class
-    sim_type = "walk"
+    sim_type = "jump"
     mpc = CIMPC(sim_type, config)
     mpc.update_ref_traj_(mpc.ctrl_pts)
 
@@ -247,7 +258,4 @@ if __name__=="__main__":
         print("\nSolve time:", solve_time)
 
         mpc.save_solution()
-
-        # exit()
-
-        # mpc.visualize(q_sol)
+        mpc.visualize(q_sol)
