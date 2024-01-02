@@ -3,13 +3,23 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clear all; clc;
 
-% import raw ROM data
-q_nom = importdata('q_nom.txt');
-q_sol = importdata('q_sol.txt');
-time = importdata('time.txt');
+% import configuration position, velocity, and acceleration data
+q_nom = importdata('2024-01-02_14:57:31_jump_q_nom.txt');
+q_sol = importdata('2024-01-02_14:57:31_jump_q_sol.txt');
+v_nom = importdata('2024-01-02_14:57:31_jump_v_nom.txt');
+v_sol = importdata('2024-01-02_14:57:31_jump_v_sol.txt');
+a_sol = importdata('2024-01-02_14:57:31_jump_a_sol.txt');
 
-pos_right = importdata('pos_r_foot.txt');
-pos_left = importdata('pos_l_foot.txt');
+% import foot position, velocity, and acceleration data
+pos_right = importdata('2024-01-02_14:57:31_jump_pos_r_foot.txt');
+pos_left  = importdata('2024-01-02_14:57:31_jump_pos_l_foot.txt');
+vel_right = importdata('2024-01-02_14:57:31_jump_vel_r_foot.txt');
+vel_left  = importdata('2024-01-02_14:57:31_jump_vel_l_foot.txt');
+acc_right = importdata('2024-01-02_14:57:31_jump_acc_r_foot.txt');
+acc_left  = importdata('2024-01-02_14:57:31_jump_acc_l_foot.txt');
+
+% import time data
+time = importdata('2024-01-02_14:57:31_jump_time.txt');
 
 % labels for trajectory plots
 labels = ["$x$",
@@ -27,7 +37,7 @@ for i = 1:7
     plot(time,q_nom(:,i),'b')
     ylabel(labels(i),'Interpreter','latex','FontSize',16)
     xlabel('time (s)','FontSize',12,'Interpreter','latex')
-    title('$q_{sol}$','Interpreter','latex','FontSize',16)
+    title('$q_{nom}$','Interpreter','latex','FontSize',16)
     yline(0); grid on;
 end
 
@@ -78,7 +88,7 @@ grid on;
 %% Animate the leg configurations
 
 % plot leg orbits
-f =figure(3);
+f = figure(3);
 f.WindowState = 'maximized';
 tic
 i=1;
@@ -119,7 +129,23 @@ while i <= length(time)
     i = i+1;
 end
 
+%% to check that feet pos, vel, acc are approx correct
+t = time;
 
+z_pos_right = pos_right(:,3);
+z_vel_right = vel_right(:,3);
+z_acc_right = acc_right(:,3);
 
+z_vel_right_hat = diff(z_pos_right)./diff(t);
+z_acc_right_hat = diff(z_vel_right_hat)./diff(t(1:end-1));
 
+subplot(1,3,1)
+plot(t, z_pos_right,'b'), hold on;
 
+subplot(1,3,2)
+plot(t,z_vel_right,'b'), hold on;
+plot(t(1:end-1),z_vel_right_hat,'r')
+
+subplot(1,3,3)
+plot(t,z_acc_right,'b'), hold on;
+plot(t(1:end-2),z_acc_right_hat,'r')

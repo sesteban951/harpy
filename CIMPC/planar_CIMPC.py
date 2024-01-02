@@ -2,7 +2,9 @@
 
 # import drake
 from pydrake.all import (StartMeshcat, DiagramBuilder,
-        AddMultibodyPlantSceneGraph, AddDefaultVisualization, Parser, BezierCurve)
+                         AddMultibodyPlantSceneGraph, AddDefaultVisualization, 
+                         Parser, BezierCurve,
+                         JacobianWrtVariable)
 
 # import pyidto tools
 from pyidto.trajectory_optimizer import TrajectoryOptimizer
@@ -164,16 +166,20 @@ class CIMPC():
 
         # get current date and time
         now = datetime.datetime.now()
-        time_str = now.strftime("%Y-%m-%d_%H:%M:%S")
+        time_str = now.strftime("%Y-%m-%d_%H:%M:%S_")
 
         # save ROM trajectories
-        q_nom_str = "data/" + sim_type + "_q_nom_" + time_str + ".txt"
-        q_sol_str = "data/" + sim_type + "_q_sol_" + time_str + ".txt"       
+        q_nom_str = "data/" + time_str + sim_type + "_q_nom" + ".txt"
+        q_sol_str = "data/" + time_str + sim_type + "_q_sol" + ".txt"
+        v_nom_str = "data/" + time_str + sim_type + "_v_nom" + ".txt"
+        v_sol_str = "data/" + time_str + sim_type + "_v_sol" + ".txt"      
         np.savetxt(q_nom_str, np.array(self.problem.q_nom))
         np.savetxt(q_sol_str, np.array(self.sol.q))
+        np.savetxt(v_nom_str, np.array(self.problem.v_nom))
+        np.savetxt(v_sol_str, np.array(self.sol.v))
 
         # save the time stamps
-        t_str = "data/" + sim_type + "_time_" + time_str + ".txt"
+        t_str = "data/" + time_str + sim_type + "_time" + ".txt"
         np.savetxt(t_str, np.array(self.t_array))
 
         # create model and diagram context
@@ -181,30 +187,82 @@ class CIMPC():
         self.create_diagram_context()
 
         # create foot frame postions
-        r_foot_pos = self.plant.GetFrameByName("FootRight")
-        l_foot_pos = self.plant.GetFrameByName("FootLeft")
+        r_foot_frame = self.plant.GetFrameByName("FootRight")
+        l_foot_frame = self.plant.GetFrameByName("FootLeft")
 
         r_pos_list = []
         l_pos_list = []
+        r_vel_list = []
+        l_vel_list = []
+        r_acc_list = []
+        l_acc_list = []
+
+        a_sol = []
+
+        # TODO: get the CoM velocities and accelerations in world frame
+        # look into CalcBiasCenterOfMassTranslationalAcceleration
 
         # iterate through time steps
         for k in range(self.problem.num_steps + 1):
-            # set solution conifguration
-            self.plant.SetPositions(self.plant_context, np.array(self.sol.q[k]))
-
-            # get foot positions
-            r_pos = self.plant.CalcPointsPositions(self.plant_context, r_foot_pos, 
+            # set solution conifguration pos and vel
+            q_v = np.vstack((self.sol.q[k], self.sol.v[k])).reshape(-1, 1)
+            self.plant.SetPositionsAndVelocities(self.plant_context, q_v)
+            print(q_v)
+            # get foot positions in world frame
+            r_pos = self.plant.CalcPointsPositions(self.plant_context, r_foot_frame, 
                                                    [0, 0, 0], self.plant.world_frame())
-            l_pos = self.plant.CalcPointsPositions(self.plant_context, l_foot_pos, 
+            l_pos = self.plant.CalcPointsPositions(self.plant_context, l_foot_frame, 
                                                    [0, 0, 0], self.plant.world_frame())
             r_pos_list.append(np.array(r_pos.T)[0])
             l_pos_list.append(np.array(l_pos.T)[0])
 
-        # save foot positions
-        right_str = "data/" + sim_type + "_pos_r_foot_" + time_str + ".txt"
-        left_str = "data/" + sim_type + "_pos_l_foot_" + time_str + ".txt"
-        np.savetxt(right_str, np.array(r_pos_list)) 
-        np.savetxt(left_str, np.array(l_pos_list))
+            # get foot end velocities in world frame, v_trans = J(q) * v_joint
+            J_r = self.plant.CalcJacobianTranslationalVelocity(self.plant_context, JacobianWrtVariable.kV,
+                                                               r_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                                                               self.plant.world_frame())
+            J_l = self.plant.CalcJacobianTranslationalVelocity(self.plant_context, JacobianWrtVariable.kV,
+                                                               l_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                                                               self.plant.world_frame())
+            r_vel = J_r @ np.array(self.sol.v[k])
+            l_vel = J_l @ np.array(self.sol.v[k])
+            r_vel_list.append(r_vel)
+            l_vel_list.append(l_vel)
+
+            # get foot end accelerations in world frame, v_dot = J_dot(q) * v_joint + J(q) * v_joint_dot
+            Jdqd_r = self.plant.CalcBiasTranslationalAcceleration(self.plant_context, JacobianWrtVariable.kV,
+                                                                     r_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                                                                     self.plant.world_frame()).flatten()
+            Jdqd_l = self.plant.CalcBiasTranslationalAcceleration(self.plant_context, JacobianWrtVariable.kV,
+                                                                     l_foot_frame, [0, 0, 0], self.plant.world_frame(),
+                                                                     self.plant.world_frame()).flatten()
+            if k != self.problem.num_steps:
+                vdot_k = (self.sol.v[k+1] - self.sol.v[k]) / self.dt
+            else:
+                vdot_k = (self.sol.v[k] - self.sol.v[k-1]) / self.dt
+            a_sol.append(vdot_k)
+
+            r_acc = Jdqd_r + J_r @ np.array(vdot_k)
+            l_acc = Jdqd_l + J_l @ np.array(vdot_k)
+            r_acc_list.append(r_acc)
+            l_acc_list.append(l_acc)
+
+        # save foot positions, velocities, and accelerations
+        r_pos_str = "data/" + time_str + sim_type + "_pos_r_foot" + ".txt"
+        l_pos_str = "data/" + time_str + sim_type + "_pos_l_foot" + ".txt"
+        r_vel_str = "data/" + time_str + sim_type + "_vel_r_foot" + ".txt"
+        l_vel_str = "data/" + time_str + sim_type + "_vel_l_foot" + ".txt"
+        r_acc_str = "data/" + time_str + sim_type + "_acc_r_foot" + ".txt"
+        l_acc_str = "data/" + time_str + sim_type + "_acc_l_foot" + ".txt"
+        np.savetxt(r_pos_str, np.array(r_pos_list)) 
+        np.savetxt(l_pos_str, np.array(l_pos_list))
+        np.savetxt(r_vel_str, np.array(r_vel_list))
+        np.savetxt(l_vel_str, np.array(l_vel_list))
+        np.savetxt(r_acc_str, np.array(r_acc_list))
+        np.savetxt(l_acc_str, np.array(l_acc_list))
+
+        # save solution accelerations
+        a_sol_str = "data/" + time_str + sim_type + "_a_sol" + ".txt"
+        np.savetxt(a_sol_str, np.array(a_sol))
         
         print("\nSaved the reference trajectory data.")
 
@@ -244,6 +302,7 @@ if __name__=="__main__":
     # see the reference trajectory or solve the MPC problem
     # 1 = see ref, 0 = solve MPC
     see_ref_traj = 0
+    save_sol_traj = 1
     
     # just see the refernce trajecotry
     if see_ref_traj == 1:
@@ -256,6 +315,8 @@ if __name__=="__main__":
         q_sol = mpc.sol.q
         solve_time = np.sum(mpc.stats.iteration_times)
         print("\nSolve time:", solve_time)
+        
+        if save_sol_traj == 1:
+            mpc.save_solution()
 
-        mpc.save_solution()
         mpc.visualize(q_sol)
