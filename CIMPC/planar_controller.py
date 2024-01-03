@@ -86,6 +86,8 @@ class Controller(LeafSystem):
         # Store the desired trajectory
         self.GetNominalTrajectory()
 
+    ##################################################################################################
+
     # function to parse the desired SRB trajectory data
     def GetNominalTrajectory(self):
         # load trajectory data
@@ -119,6 +121,8 @@ class Controller(LeafSystem):
         data_str = data_path + labels[6]
         self.acc_l_foot = np.loadtxt(data_str)
 
+    ##################################################################################################
+
     # get torques from inverse kinematics
     def InverseDynamicsQP(self, pdd_right_nom, pdd_left_nom, pdd_com_nom, orient_com_nom):
         """
@@ -148,16 +152,14 @@ class Controller(LeafSystem):
         Note: assumes that self.plant_context holds the current state
         """
         # Set up a mathematical program
-        # TODO(vincekurtz): allocate this in the constructor and just update
-        # constraints as needed
-        mp = MathematicalProgram()
+        qp = MathematicalProgram()
 
         # Add decision variables for the joint accelerations, joint torques, and
         # contact forces
-        qdd = mp.NewContinuousVariables(self.plant.num_velocities(), "qdd")
-        tau = mp.NewContinuousVariables(self.plant.num_actuators(), "tau")
-        lambda_left = mp.NewContinuousVariables(3, "lambda_left")
-        lambda_right = mp.NewContinuousVariables(3, "lambda_right")
+        qdd = qp.NewContinuousVariables(self.plant.num_velocities(), "qdd")
+        tau = qp.NewContinuousVariables(self.plant.num_actuators(), "tau")
+        lambda_left = qp.NewContinuousVariables(3, "lambda_left")
+        lambda_right = qp.NewContinuousVariables(3, "lambda_right")
 
         # Add the left foot tracking cost
         # ||p''_left - p''_left_nom||^2
@@ -170,7 +172,7 @@ class Controller(LeafSystem):
                 self.left_foot_frame, [0, 0, 0], self.plant.world_frame(),
                 self.plant.world_frame()).flatten()
         pdd_left = J_left @ qdd + Jdqd_left
-        mp.AddQuadraticCost((pdd_left - pdd_left_nom).dot(pdd_left - pdd_left_nom), is_convex=True)
+        qp.AddQuadraticCost((pdd_left - pdd_left_nom).dot(pdd_left - pdd_left_nom), is_convex=True)
 
         # Add the right foot tracking cost
         # ||p''_right - p''_right_nom||^2
@@ -183,7 +185,7 @@ class Controller(LeafSystem):
                 self.right_foot_frame, [0, 0, 0], self.plant.world_frame(),
                 self.plant.world_frame()).flatten()
         pdd_right = J_right @ qdd + Jdqd_right
-        mp.AddQuadraticCost((pdd_right - pdd_right_nom).dot(pdd_right - pdd_right_nom), is_convex=True)
+        qp.AddQuadraticCost((pdd_right - pdd_right_nom).dot(pdd_right - pdd_right_nom), is_convex=True)
 
         # Add the CoM tracking cost
         # ||p''_com - p''_com_nom||^2
@@ -194,24 +196,32 @@ class Controller(LeafSystem):
                 self.plant_context, JacobianWrtVariable.kV,
                 self.plant.world_frame(), self.plant.world_frame()).flatten()
         pdd_com = J_com @ qdd + Jdqd_com
-        mp.AddQuadraticCost((pdd_com - pdd_com_nom).dot(pdd_com - pdd_com_nom), is_convex=True)
+        qp.AddQuadraticCost((pdd_com - pdd_com_nom).dot(pdd_com - pdd_com_nom), is_convex=True)
 
         # Add the torque penalty
         # ||τ||^2
-        mp.AddQuadraticCost(tau.dot(tau), is_convex=True)
+        qp.AddQuadraticCost(tau.dot(tau), is_convex=True)
 
         # Add the inverse dynamics constraint
         # D(q)q'' + h(q,q') = Bτ + J^Tλ
         D = self.plant.CalcMassMatrix(self.plant_context)
         H = self.plant.CalcBiasTerm(self.plant_context)
         B = self.plant.MakeActuationMatrix()
-        mp.AddConstraint(eq(D @ qdd + H, B @ tau))
+        qp.AddConstraint(eq(D @ qdd + H, B @ tau))   # TODO: add J^Tλ
 
         # Add the holonomic constraint that enforces the four-bar linkage distances
         # J_h q'' + J'_h q' = 0
+        # TODO: add holonomic constraint, write down the math first
+        # TODO: Add the friction cone constraints
+        # TODO: Add torque constraints
 
-        res = OsqpSolver().Solve(mp)
+        res = OsqpSolver().Solve(qp)
         assert res.is_success(), "Inverse Dynamics QP Failed!"
+
+        tau_ff = np.zeros(6)
+        return tau_ff
+
+    ##################################################################################################
 
     def CalcOutput(self, context):
         # Set our internal model to match the state estimte
@@ -249,6 +259,8 @@ class Controller(LeafSystem):
                                         left_foot_acc_des, 
                                         acc_base_des, 
                                         pos_base_des[2])
+        
+        print(self.t_current)
 
         # Map generalized positions from IK to actuated joint angles
         q_nom = np.array([0, 0, 
