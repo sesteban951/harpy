@@ -302,7 +302,7 @@ if __name__=="__main__":
     # see the reference trajectory or solve the MPC problem
     # 1 = see ref, 0 = solve MPC
     see_ref_traj = 0
-    save_sol_traj = 1
+    save_sol_traj = 0
     
     # just see the refernce trajecotry
     if see_ref_traj == 1:
